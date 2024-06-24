@@ -1,4 +1,3 @@
-
 #[macro_export]
 macro_rules! mmio_write_32 {
     ($ptr:expr, $val:expr) => {
@@ -7,7 +6,7 @@ macro_rules! mmio_write_32 {
 }
 #[macro_export]
 macro_rules! mmio_read_32 {
-  ($ptr:expr) => {
-      ($ptr as *const u32).read_volatile()
-  };
+    ($ptr:expr) => {
+        ($ptr as *const u32).read_volatile()
+    };
 }

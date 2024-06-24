@@ -1,33 +1,28 @@
-
 #[macro_export]
 macro_rules! println {
-    () => { 
+    () => {{
         use core::fmt::Write;
-        writeln!($crate::prelude::Std).unwrap();
-    };
-    ($($arg:tt)*) => { 
+        writeln!($crate::prelude::Stdout).unwrap();
+    }};
+    ($($arg:tt)*) => {{
         use core::fmt::Write;
-        writeln!($crate::prelude::Std, $($arg)*).unwrap();
-    };
+        writeln!($crate::prelude::Stdout, $($arg)*).unwrap();
+    }};
 }
 
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => { 
+    ($($arg:tt)*) => {{
         use core::fmt::Write;
-        write!($crate::prelude::Std, $($arg)*).unwrap();
-    };
+        write!($crate::prelude::Stdout, $($arg)*).unwrap();
+    }};
 }
 
-pub struct Std;
+pub struct Stdout;
 
-impl core::fmt::Write for Std{
+impl core::fmt::Write for Stdout {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         crate::uart::print(s);
         Ok(())
     }
 }
-
-// pub extern "C" fn memcpy(dest: *mut u8, src: *const u8, num: usize){
-
-// }

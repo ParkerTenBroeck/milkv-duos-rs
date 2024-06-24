@@ -91,9 +91,28 @@ pub fn print(msg: &str) {
     }
 }
 
-pub fn flush() {
-    unsafe{
+pub fn get_b() -> u8 {
+    unsafe {
         let lsr = core::ptr::addr_of_mut!((*UART0).lsr);
-        while (lsr.read_volatile() & (UART_LSR_THRE | UART_LSR_TEMT)) != (UART_LSR_THRE | UART_LSR_TEMT) {}
+        let rbr = core::ptr::addr_of_mut!((*UART0).rbr);
+
+        while (lsr.read_volatile() & UART_LSR_DR) == 0 {}
+        rbr.read_volatile() as u8
+    }
+}
+
+pub fn has_b() -> bool {
+    unsafe {
+        let lsr = core::ptr::addr_of_mut!((*UART0).lsr);
+        lsr.read_volatile() & UART_LSR_DR != 0
+    }
+}
+
+pub fn flush() {
+    unsafe {
+        let lsr = core::ptr::addr_of_mut!((*UART0).lsr);
+        while (lsr.read_volatile() & (UART_LSR_THRE | UART_LSR_TEMT))
+            != (UART_LSR_THRE | UART_LSR_TEMT)
+        {}
     }
 }
