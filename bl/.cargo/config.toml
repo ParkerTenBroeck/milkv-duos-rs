@@ -1,0 +1,14 @@
+
+[unstable]
+build-std = ["core"]
+
+[build]
+target = "./milkv-duos.json"
+
+rustflags = [
+    "-Clink-args=-Tbl.ld",
+    "-C", "linker-flavor=gcc",
+]
+
+[target.milkv-duos]
+linker = "riscv64-none-elf-gcc"

@@ -1,0 +1,15 @@
+[package]
+name = "bl"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+
+[profile.release]
+panic = "abort"
+opt-level = "s"
+# lto = "fat"
+
+[profile.dev]
+panic = "abort"
