@@ -1,12 +1,9 @@
 #![no_std]
 #![no_main]
 #![no_builtins]
-#![allow(internal_features)]
-#![feature(core_intrinsics)]
 #![feature(cfg_target_has_atomic)]
 #![feature(asm_const)]
 
-pub mod mem;
 pub mod uart;
 pub mod prelude;
 pub mod timer;
