@@ -23,8 +23,6 @@ core::arch::global_asm!(
     .section .text.entry,"ax",@progbits
     .globl bl_entrypoint
   bl_entrypoint:
-    #auipc a0,0x0
-    #auipc a0,0x0
 
     li x1, 0
     li x2, 0
@@ -35,7 +33,7 @@ core::arch::global_asm!(
     li x7, 0
     li x8, 0
     li x9, 0
-    # li x10, 0
+    li x10, 0
     li x11, 0
     li x12, 0
     li x13, 0
@@ -117,8 +115,6 @@ core::arch::global_asm!(
     addi a4, a4, -8
     bnez a4, bss_clear
   
-  
-    la a0,bl_entrypoint
     call bl_rust_main
 
     j die

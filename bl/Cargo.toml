@@ -5,6 +5,7 @@ edition = "2021"
 
 
 [dependencies]
+cfmt = {version = "0.*", package = "const_format"}
 
 [profile.release]
 panic = "abort"
