@@ -1,19 +1,4 @@
-#[allow(non_upper_case_globals)]
-pub const mxstatus: u32 = 0x7C0;
-#[allow(non_upper_case_globals)]
-pub const mhcr: u32 = 0x7C1;
-#[allow(non_upper_case_globals)]
-pub const mcor: u32 = 0x7C2;
-#[allow(non_upper_case_globals)]
-pub const mccr2: u32 = 0x7C3;
-#[allow(non_upper_case_globals)]
-pub const mcer2: u32 = 0x7C4;
-#[allow(non_upper_case_globals)]
-pub const mhint: u32 = 0x7C5;
-#[allow(non_upper_case_globals)]
-pub const mrmr: u32 = 0x7C6;
-#[allow(non_upper_case_globals)]
-pub const mrvbr: u32 = 0x7C7;
+use crate::csr_reg::*;
 
 core::arch::global_asm!(
     r#"
@@ -74,30 +59,34 @@ core::arch::global_asm!(
     // invalidate all memory for BTB,BHT,DCACHE,ICACHE
     li x3, 0x30013
     csrs {mcor}, x3
+    
     // enable ICACHE,DCACHE,BHT,BTB,RAS,WA
-    li x3, 0x7f
-    csrs {mhcr}, x3
+    #li x3, 0x7f
+    #csrs {mhcr}, x3
   
     # invalid I-cache
     li x3, 0x33
     csrc {mcor}, x3
     li x3, 0x11
     csrs {mcor}, x3
+
     # enable I-cache
-    li x3, 0x1
-    csrs {mhcr}, x3
+    #li x3, 0x1
+    #csrs {mhcr}, x3
+    
     # invalid D-cache
     li x3, 0x33
     csrc {mcor}, x3
     li x3, 0x12
     csrs {mcor}, x3
+
     # enable D-cache
-    li x3, 0x2
-    csrs {mhcr}, x3
+    #li x3, 0x2
+    #csrs {mhcr}, x3
   
     // enable data_cache_prefetch, amr
-    li x3, 0x610c
-    csrs {mhint}, x3 #mhint
+    #li x3, 0x610c
+    #csrs {mhint}, x3 #mhint
   
     # enable fp
     li x3, 0x1 << 13
@@ -121,19 +110,27 @@ core::arch::global_asm!(
   
   
     .balign 4
-  trap_vector:
   die:
     j panic_handler
     j die
-
-    .bss
-    .align 12
-    .section .rodata
-    .align 7
     "#,
 
     mxstatus = const mxstatus,
     mcor = const mcor,
     mhcr = const mhcr,
     mhint = const mhint,
+);
+
+
+core::arch::global_asm!(
+    r#"
+    .balign 4
+    .globl  trap_vector
+
+    .option norvc
+    .section .text.trap_vector,"ax",@progbits
+    .globl trap_vector
+
+    trap_vector:
+    "#
 );

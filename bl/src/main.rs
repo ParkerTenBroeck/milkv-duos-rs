@@ -1,19 +1,23 @@
 #![no_std]
 #![no_main]
 #![feature(asm_const)]
-#![feature(const_type_name)]
 
+pub mod csr_reg;
+pub mod ddr;
 pub mod entry;
+pub mod gpio;
 pub mod mmio;
 pub mod panic;
 pub mod prelude;
 pub mod timer;
 pub mod uart;
+pub mod efuse;
+pub mod pinmux;
 
 use panic::reset;
 pub use prelude::*;
 
-pub fn print_mem_b(addr_area: usize, size: usize) {
+pub fn print_mem_u8(addr_area: usize, size: usize) {
     const BLOCK_SIZE: usize = 16;
     let addr_start = addr_area & !(BLOCK_SIZE - 1);
     let addr_end = (addr_area + size + BLOCK_SIZE - 1) & !(BLOCK_SIZE - 1);
@@ -47,12 +51,78 @@ pub fn print_mem_b(addr_area: usize, size: usize) {
     }
 }
 
+pub fn print_mem_u16(addr_area: usize, size: usize) {
+  const BLOCK_SIZE: usize = 16;
+  let addr_start = addr_area & !(BLOCK_SIZE - 1);
+  let addr_end = (addr_area + size + BLOCK_SIZE - 1) & !(BLOCK_SIZE - 1);
 
-fn user_in(buffer: &mut [u8]) -> &str{
+  print!("                  ");
+  for i in (0..BLOCK_SIZE).step_by(core::mem::size_of::<u16>()) {
+      print!("  {i:02X} ");
+  }
+  println!();
+
+  for block_start in (addr_start..addr_end).step_by(BLOCK_SIZE) {
+      print!("0x{block_start:016X}");
+      for i in (0..BLOCK_SIZE).step_by(core::mem::size_of::<u16>()) {
+          let addr = block_start + i;
+          let ptr = addr as *const u16;
+          print!(" {:04X}", unsafe { ptr.read_volatile() });
+      }
+      print!(" ");
+      for i in 0..BLOCK_SIZE {
+          let addr = block_start + i;
+          let ptr = addr as *const u8;
+          let val = unsafe { ptr.read_volatile() };
+          if val.is_ascii_graphic() {
+              print!("{}", val as char);
+          } else {
+              print!(".");
+          }
+      }
+
+      println!();
+  }
+}
+
+pub fn print_mem_u32(addr_area: usize, size: usize) {
+  const BLOCK_SIZE: usize = 16;
+  let addr_start = addr_area & !(BLOCK_SIZE - 1);
+  let addr_end = (addr_area + size + BLOCK_SIZE - 1) & !(BLOCK_SIZE - 1);
+
+  print!("                  ");
+  for i in (0..BLOCK_SIZE).step_by(core::mem::size_of::<u32>()) {
+      print!("    {i:02X}   ");
+  }
+  println!();
+
+  for block_start in (addr_start..addr_end).step_by(BLOCK_SIZE) {
+      print!("0x{block_start:016X}");
+      for i in (0..BLOCK_SIZE).step_by(core::mem::size_of::<u32>()) {
+          let addr = block_start + i;
+          let ptr = addr as *const u32;
+          print!(" {:08X}", unsafe { ptr.read_volatile() });
+      }
+      print!(" ");
+      for i in 0..BLOCK_SIZE {
+          let addr = block_start + i;
+          let ptr = addr as *const u8;
+          let val = unsafe { ptr.read_volatile() };
+          if val.is_ascii_graphic() {
+              print!("{}", val as char);
+          } else {
+              print!(".");
+          }
+      }
+
+      println!();
+  }
+}
+
+fn user_in(buffer: &mut [u8]) -> &str {
     let mut len = 0;
     let mut pos = 0;
 
-    uart::print_c(b'\n');
     loop {
         {
             uart::print("\x1b[2K\x1b[0G");
@@ -66,7 +136,7 @@ fn user_in(buffer: &mut [u8]) -> &str{
 
         match uart::get_b() {
             0x1b => {
-                if uart::get_b() == 0x5b{
+                if uart::get_b() == 0x5b {
                     match uart::get_b() {
                         0x43 => {
                             pos = (pos + 1).min(buffer.len() - 1).min(len);
@@ -119,11 +189,9 @@ fn user_in(buffer: &mut [u8]) -> &str{
     core::str::from_utf8(command).unwrap()
 }
 
-
-
-trait Command{
+trait Command {
     fn name(&self) -> &'static str;
-    fn run(&self, args: &str) -> Result<(), &'static str>;
+    fn run(&self, args: &str);
     fn help(&self) -> &'static str;
 }
 
@@ -136,10 +204,8 @@ macro_rules! cmd {
                 $cmd_mnemonic
             }
 
-            fn run(&$self, $args: &str) -> Result<(), &'static str> {
+            fn run(&$self, $args: &str) {
                 $code
-                #[allow(unreachable_code)]
-                Ok(())
             }
 
             fn help(&self) -> &'static str{
@@ -151,24 +217,177 @@ macro_rules! cmd {
     }};
 }
 
+trait Argument: Sized {
+    const DISP: &str;
+    fn parse(str: &str) -> Result<Self, &'static str>;
+}
+
+impl Argument for u8 {
+    const DISP: &str = "u8";
+
+    fn parse(str: &str) -> Result<Self, &'static str> {
+        fn parse_str(str: &str, rad: u32) -> Result<u8, &'static str> {
+            match u8::from_str_radix(str, rad) {
+                Ok(v) => Ok(v),
+                Err(err) => Err(match err.kind() {
+                    core::num::IntErrorKind::Empty => "Empty",
+                    core::num::IntErrorKind::InvalidDigit => "Invalid digit",
+                    core::num::IntErrorKind::PosOverflow => "Integer too large",
+                    core::num::IntErrorKind::NegOverflow => "Integer too small",
+                    core::num::IntErrorKind::Zero => "Cannot be zero",
+                    _ => "",
+                }),
+            }
+        }
+        if str.starts_with("0x") {
+            parse_str(&str[2..], 16)
+        } else if str.starts_with("0b") {
+            parse_str(&str[2..], 2)
+        } else {
+            parse_str(&str, 10)
+        }
+    }
+}
+
+impl Argument for u16 {
+  const DISP: &str = "u16";
+
+  fn parse(str: &str) -> Result<Self, &'static str> {
+      fn parse_str(str: &str, rad: u32) -> Result<u16, &'static str> {
+          match u16::from_str_radix(str, rad) {
+              Ok(v) => Ok(v),
+              Err(err) => Err(match err.kind() {
+                  core::num::IntErrorKind::Empty => "Empty",
+                  core::num::IntErrorKind::InvalidDigit => "Invalid digit",
+                  core::num::IntErrorKind::PosOverflow => "Integer too large",
+                  core::num::IntErrorKind::NegOverflow => "Integer too small",
+                  core::num::IntErrorKind::Zero => "Cannot be zero",
+                  _ => "",
+              }),
+          }
+      }
+      if str.starts_with("0x") {
+          parse_str(&str[2..], 16)
+      } else if str.starts_with("0b") {
+          parse_str(&str[2..], 2)
+      } else {
+          parse_str(&str, 10)
+      }
+  }
+}
+
+impl Argument for u32 {
+  const DISP: &str = "u32";
+
+  fn parse(str: &str) -> Result<Self, &'static str> {
+      fn parse_str(str: &str, rad: u32) -> Result<u32, &'static str> {
+          match u32::from_str_radix(str, rad) {
+              Ok(v) => Ok(v),
+              Err(err) => Err(match err.kind() {
+                  core::num::IntErrorKind::Empty => "Empty",
+                  core::num::IntErrorKind::InvalidDigit => "Invalid digit",
+                  core::num::IntErrorKind::PosOverflow => "Integer too large",
+                  core::num::IntErrorKind::NegOverflow => "Integer too small",
+                  core::num::IntErrorKind::Zero => "Cannot be zero",
+                  _ => "",
+              }),
+          }
+      }
+      if str.starts_with("0x") {
+          parse_str(&str[2..], 16)
+      } else if str.starts_with("0b") {
+          parse_str(&str[2..], 2)
+      } else {
+          parse_str(&str, 10)
+      }
+  }
+}
+
+impl Argument for usize {
+    const DISP: &str = "usize";
+
+    fn parse(str: &str) -> Result<Self, &'static str> {
+        fn parse_str(str: &str, rad: u32) -> Result<usize, &'static str> {
+            match usize::from_str_radix(str, rad) {
+                Ok(v) => Ok(v),
+                Err(err) => Err(match err.kind() {
+                    core::num::IntErrorKind::Empty => "Empty",
+                    core::num::IntErrorKind::InvalidDigit => "Invalid digit",
+                    core::num::IntErrorKind::PosOverflow => "Integer too large",
+                    core::num::IntErrorKind::NegOverflow => "Integer too small",
+                    core::num::IntErrorKind::Zero => "Cannot be zero",
+                    _ => "",
+                }),
+            }
+        }
+        if str.starts_with("0x") {
+            parse_str(&str[2..], 16)
+        } else if str.starts_with("0b") {
+            parse_str(&str[2..], 2)
+        } else {
+            parse_str(&str, 10)
+        }
+    }
+}
+
+impl Argument for bool {
+    const DISP: &str = "bool";
+
+    fn parse(str: &str) -> Result<Self, &'static str> {
+        match str {
+            "true" => Ok(true),
+            "false" => Ok(false),
+            _ => Err("Invalid repr, expected ['true', 'false']"),
+        }
+    }
+}
+
+enum GpioKind {
+    Toggle,
+    Set,
+    Get,
+}
+
+impl Argument for GpioKind {
+    const DISP: &str = "[Toggle, Set, Get]";
+
+    fn parse(str: &str) -> Result<Self, &'static str> {
+        match str {
+            "Toggle" | "toggle" => Ok(Self::Toggle),
+            "Get" | "get" => Ok(Self::Get),
+            "Set" | "set" => Ok(Self::Set),
+            _ => Err("Invalid repr, expected ['Toggle', 'Set', 'Get']"),
+        }
+    }
+}
+
 macro_rules! args {
     ($args:expr, ($($name:ident: $type:ty $(= $default:expr)?),*)) => {
-        let mut args = $args.split_whitespace().map(|v|v.trim());
+        let mut args = $args.split_whitespace().map(|v|v.trim()).peekable();
         $(
-            let $name = if let Some(arg) = args.next(){
-                use core::str::FromStr;
-                if let Ok(val) = <$type>::from_str(arg){
+            let $name = if let Some(arg) = args.peek(){
+                match <$type as Argument>::parse(arg){
+                  Ok(val) => {
+                    args.next();
                     val
-                }else{
-                    return Err(cfmt::formatcp!("Unable to parse argument ({}: {})", stringify!($name), core::any::type_name::<$type>()))
+                  }
+                  Err(_err) => {
+                    args!(BADPARSE, _err, $name, $type, $($default)?)
+                  }
                 }
             }else{
                 args!(DEFAULT, $name, $type, $($default)?)
             };
         )*
     };
+    (BADPARSE, $err:expr, $name:ident, $type:ty,) => {
+      return println!("Unable to parse argument ({}: {}) {}", stringify!($name), <$type as Argument>::DISP, $err)
+    };
+    (BADPARSE, $err:expr, $name:ident, $type:ty, $default:expr) => {
+        $default
+    };
     (DEFAULT, $name:ident, $type:ty,) => {
-        return Err(cfmt::formatcp!("Expected argument ({}: {}) but it was not provided", stringify!($name), core::any::type_name::<$type>()))
+        return println!("Expected argument ({}: {}) but it was not provided", stringify!($name), <$type as Argument>::DISP)
     };
     (DEFAULT, $name:ident, $type:ty, $default:expr) => {
         $default
@@ -183,14 +402,39 @@ const COMAMNDS: &[&'static dyn Command] = &[
     }),
     cmd!("goto", "(addr: usize) jumps to the specified address", (self, args) -> {
         args!(args, (addr: usize));
-        unsafe{
-            core::arch::asm!("jalr {0}", in (reg) addr)
-        }
+        let func: fn() = unsafe{ core::mem::transmute(addr) };
+        func();
     }),
-    cmd!("md.b", "(addr: usize, count: usize = 256) displays count bytes starting at 'addr'", (self, args) -> {
+    cmd!("mw.8", "(addr: usize, val: u8) writes 'val' to address 'addr'", (self, args) -> {
+      args!(args, (addr: usize, val: u8));
+      unsafe{
+        (addr as *mut u8).write_volatile(val);
+      }
+    }),
+    cmd!("mw.16", "(addr: usize, val: u16) writes 'val' to address 'addr'", (self, args) -> {
+      args!(args, (addr: usize, val: u16));
+      unsafe{
+        (addr as *mut u16).write_volatile(val);
+      }
+    }),
+    cmd!("mw.32", "(addr: usize, val: u32) writes 'val' to address 'addr'", (self, args) -> {
+      args!(args, (addr: usize, val: u32));
+      unsafe{
+        (addr as *mut u32).write_volatile(val);
+      }
+    }),
+    cmd!("md.8", "(addr: usize, count: usize = 256) displays 'count' u8s starting at 'addr'", (self, args) -> {
         args!(args, (addr: usize, count: usize = 256));
-        print_mem_b(addr, count);
+        print_mem_u8(addr, count);
     }),
+    cmd!("md.16", "(addr: usize, count: usize = 256) displays 'count' u16s starting at 'addr'", (self, args) -> {
+      args!(args, (addr: usize, count: usize = 256));
+      print_mem_u16(addr, count);
+    }),
+    cmd!("md.32", "(addr: usize, count: usize = 256) displays 'count' u32s starting at 'addr'", (self, args) -> {
+      args!(args, (addr: usize, count: usize = 256));
+      print_mem_u32(addr, count);
+  }),
     cmd!("start", "prints the starting address of this bootloader", (self, _args) -> {
         unsafe{
             let addr: u64;
@@ -204,30 +448,64 @@ const COMAMNDS: &[&'static dyn Command] = &[
     cmd!("reset", "resets the board", (self, _args) -> {
       unsafe { reset() }
     }),
+    cmd!("gpio", "(kind: [Toggle, Set, Get], pin: u8, value: bool = false) modifies gpio", (self, args) -> {
+      args!(args, (kind: GpioKind, pin: u8, value: bool = false));
+      match kind{
+          GpioKind::Toggle => {
+            gpio::set_gpio0_direction(pin, gpio::Direction::Output);
+            gpio::set_gpio0(pin, !gpio::read_gpio0(pin));
+          },
+          GpioKind::Set => {
+            gpio::set_gpio0_direction(pin, gpio::Direction::Output);
+            gpio::set_gpio0(pin, value);
+          },
+          GpioKind::Get => {
+            gpio::set_gpio0_direction(pin, gpio::Direction::Input);
+            println!("gpio pin {} is {}", pin, if gpio::read_gpio0(pin) { "High" } else { "Low" } );
+          },
+      }
+    }),
+    cmd!("sap", "", (self, _args) -> {
+      unsafe{
+        let out: u64;
+        core::arch::asm!(
+          "csrr {0}, satp",
+          out(reg) out
+        );
+        println!("Value: 0x{out:016x}");
+
+        println!("mode: 0x{:x}", out >> (16+44));
+        println!("asid: 0x{:x}", (out >> 44) & ((1<<16) - 1));
+        println!("ppn: 0x{:x}", out & ((1<<44) - 1));
+      }
+    }),
 ];
+
 
 #[no_mangle]
 pub extern "C" fn bl_rust_main() {
+    unsafe{
+      // set pinmux to enable output of LED pin
+      mmio_write_32!(0x03001074, 0x3);
+    }
     timer::mdelay(250);
     unsafe {
         uart::console_init();
     }
     timer::mdelay(250);
+    uart::print("Initialized uart to 115200\n");
 
     uart::print("\n\n\nBooted into firmware. Starting console\n");
 
     let mut buffer = [0; 512];
-    'next_cmd:
-    loop {
+    'next_cmd: loop {
         let msg = user_in(&mut buffer);
         let (cmd_mnemonic, args) = msg.trim().split_once(' ').unwrap_or((msg, ""));
         let args = args.trim();
 
-        for cmd in COMAMNDS{
-            if cmd.name() == cmd_mnemonic{
-                if let Err(err) = cmd.run(args){
-                    println!("{} {err}", cmd.name());
-                }
+        for cmd in COMAMNDS {
+            if cmd.name() == cmd_mnemonic {
+                cmd.run(args);
                 continue 'next_cmd;
             }
         }
