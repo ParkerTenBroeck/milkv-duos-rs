@@ -361,6 +361,31 @@ impl Argument for GpioKind {
     }
 }
 
+enum TimerOp {
+  Read,
+  Ei,
+  E,
+  C,
+  Ci,
+  Set,
+}
+
+impl Argument for TimerOp {
+  const DISP: &str = "[Read, Ei, E, C, Ci, Set]";
+
+  fn parse(str: &str) -> Result<Self, &'static str> {
+      match str {
+          "Read" | "read" => Ok(Self::Read),
+          "Ei" | "ei" => Ok(Self::Ei),
+          "E" | "e" => Ok(Self::E),
+          "C" | "c" => Ok(Self::C),
+          "Set" | "set" => Ok(Self::Set),
+          "Ci" | "ci" => Ok(Self::Ci),
+          _ => Err("Invalid repr, expected ['Read', 'Ei', 'E', 'C', 'Set']"),
+      }
+  }
+}
+
 macro_rules! args {
     ($args:expr, ($($name:ident: $type:ty $(= $default:expr)?),*)) => {
         let mut args = $args.split_whitespace().map(|v|v.trim()).peekable();
@@ -392,6 +417,111 @@ macro_rules! args {
     (DEFAULT, $name:ident, $type:ty, $default:expr) => {
         $default
     };
+}
+
+fn print_csr_regs(){
+  println!("marchid   0x{:016x}", csr_reg::marchid());
+  println!("mhartid   0x{:016x}", csr_reg::mhartid());
+  println!("mimpid    0x{:016x}", csr_reg::mimpid());
+  {
+    {
+      let misa = csr_reg::misa();
+      println!("misa      0x{:016x}", misa);
+      let mut index = 0;
+      for v in 'A'..='Z'{
+        if (misa >> index) & 1 == 1{
+          println!("  {}", v);
+        }
+        index += 1;
+      }
+    }
+  }
+  println!("mvendorid 0x{:016x}", csr_reg::mvendorid());
+  {
+    let mie = csr_reg::read_mie();
+    println!("mie       0x{:016x}", mie);
+    let values = [
+      ("0", 1),
+      ("ssie", 1),
+      ("0", 1),
+      ("msie", 1),
+      ("0", 1),
+      ("stie", 1),
+      ("0", 1),
+      ("mtie", 1),
+      ("0", 1),
+      ("seie", 1),
+      ("0", 1),
+      ("meie", 1),
+      ("0", 4),
+    ];
+    let mut index = 0;
+    for v in values{
+      println!("  {}: 0b{:0width$b}", v.0, (mie >> index) & ((1<<v.1) - 1), width = v.1);
+      index += v.1;
+    }
+  }
+  {
+    let mip = csr_reg::read_mip();
+    println!("mip       0x{:016x}", mip);
+    let values = [
+      ("0", 1),
+      ("ssip", 1),
+      ("0", 1),
+      ("msip", 1),
+      ("0", 1),
+      ("stip", 1),
+      ("0", 1),
+      ("mtip", 1),
+      ("0", 1),
+      ("seip", 1),
+      ("0", 1),
+      ("meip", 1),
+      ("0", 4),
+    ];
+    let mut index = 0;
+    for v in values{
+      println!("  {}: 0b{:0width$b}", v.0, (mip >> index) & ((1<<v.1) - 1), width = v.1);
+      index += v.1;
+    }
+  }
+  {
+    let mstatus = csr_reg::read_mstatus();
+    println!("mstatus   0x{:016x}", mstatus);
+    let values = [
+      ("wpri", 1),
+      ("sie", 1),
+      ("wpri", 1),
+      ("mie", 1),
+      ("wpri", 1),
+      ("spie", 1),
+      ("ube", 1),
+      ("mpie", 1),
+      ("spp", 1),
+      ("vs", 2),
+      ("mpp", 2),
+      ("fs", 2),
+      ("xs", 2),
+      ("mprv", 1),
+      ("sum", 1),
+      ("mxr", 1),
+      ("tvm", 1),
+      ("tw", 1),
+      ("tsr", 1),
+      ("wpri", 9),
+      ("uxl", 2),
+      ("sxl", 2),
+      ("sbe", 1),
+      ("mbe", 1),
+      ("wpri", 25),
+      ("sd", 1),
+    ];
+    let mut index = 0;
+    for v in values{
+      println!("  {}: 0b{:0width$b}", v.0, (mstatus >> index) & ((1<<v.1) - 1), width = v.1);
+      index += v.1;
+    }
+  }
 }
 
 const COMAMNDS: &[&'static dyn Command] = &[
@@ -479,23 +609,128 @@ const COMAMNDS: &[&'static dyn Command] = &[
         println!("ppn: 0x{:x}", out & ((1<<44) - 1));
       }
     }),
+    cmd!("ebreak", "", (self, _args) -> {
+      unsafe{
+        core::arch::asm!(
+          "ebreak"
+        );
+      }
+    }),
+    cmd!("ecall", "", (self, _args) -> {
+      unsafe{
+        core::arch::asm!(
+          "ecall"
+        );
+      }
+    }),
+    cmd!("invcache", "", (self, _args) -> {
+      csr_reg::invalidate_d_cache()
+    }),
+    cmd!("timer", "(t: usize, op: [Read, Ei, E, C, Ci, SetVal], val: u32 = 0)", (self, args) -> {
+      args!(args, (t: usize, op: TimerOp, val: u32 = 0));
+      let base = 0x030A0000;
+      let tbase = base + t * 0x14;
+      let tim = tbase as *mut u32;
+      match op{
+          TimerOp::Read => unsafe{
+            println!("Timer{t} load: {}", tim.read_volatile());
+            println!("Timer{t} curr: {}", tim.add(1).read_volatile());
+            {
+              let ctrl = tim.add(2).read_volatile();
+              println!("Timer{t} int mask: {}", if ctrl & 4 == 4 { "masked" } else { "not masked" });
+              println!("Timer{t} mode: {}", if ctrl & 2 == 2 { "count" } else { "free" });
+              println!("Timer{t} enable: {}", ctrl & 1 == 1);
+            }
+            println!("Timer{t} int stat: {}", tim.add(4).read_volatile());
+          },
+          TimerOp::Ei => unsafe{
+            let mut ctrl = tim.add(2).read_volatile();
+            if val == 0{
+              ctrl &= !0b100;
+            }else{
+              ctrl |= 0b100;
+            }
+            tim.add(2).write_volatile(ctrl);
+          },
+          TimerOp::E => unsafe{
+            let mut ctrl = tim.add(2).read_volatile();
+            if val == 0{
+              ctrl &= !0b1;
+            }else{
+              ctrl |= 0b1;
+            }
+            tim.add(2).write_volatile(ctrl);
+          },
+          TimerOp::C => unsafe{
+            let mut ctrl = tim.add(2).read_volatile();
+            if val == 0{
+              ctrl &= !0b10;
+            }else{
+              ctrl |= 0b10;
+            }
+            tim.add(2).write_volatile(ctrl);
+          },
+          TimerOp::Ci => unsafe {
+            ((base + 0xa4) as *const u32).read_volatile();
+          },
+          TimerOp::Set => unsafe {
+            tim.write_volatile(val);
+          },
+      }
+    }),
+    cmd!("csrs", "", (self, _args) -> {
+      print_csr_regs();
+    }),
+    cmd!("mstatuss", "(val: usize)", (self, args) -> {
+      args!(args, (val: usize));
+      unsafe{
+        csr_reg::set_mstatus(val);
+      }
+    }),
+    cmd!("mstatusc", "(val: usize)", (self, args) -> {
+      args!(args, (val: usize));
+      unsafe{
+        csr_reg::clear_mstatus(val);
+      }
+    }),
+    cmd!("mies", "(val: usize)", (self, args) -> {
+      args!(args, (val: usize));
+      unsafe{
+        csr_reg::set_mie(val);
+      }
+    }),
+    cmd!("miec", "(val: usize)", (self, args) -> {
+      args!(args, (val: usize));
+      unsafe{
+        csr_reg::clear_mie(val);
+      }
+    }),
 ];
 
 
 #[no_mangle]
 pub extern "C" fn bl_rust_main() {
-    unsafe{
-      // set pinmux to enable output of LED pin
-      mmio_write_32!(0x03001074, 0x3);
-    }
+ 
     timer::mdelay(250);
     unsafe {
         uart::console_init();
     }
     timer::mdelay(250);
-    uart::print("Initialized uart to 115200\n");
+    uart::print("\n\n\nBooted into firmware\nInitialized uart to 115200\n");
+    unsafe{
+      // set pinmux to enable output of LED pin
+      mmio_write_32!(0x03001074, 0x3);
+    }
+    uart::print("Connfigured pinmux(LED pin 29)\n");
 
-    uart::print("\n\n\nBooted into firmware. Starting console\n");
+    unsafe{
+      csr_reg::enable_interrupts();
+      csr_reg::enable_timer_interrupt();
+      csr_reg::enable_timer_1();
+    }
+    uart::print("Enabling interrupts\n");
+
+    uart::print("Starting console\n");
 
     let mut buffer = [0; 512];
     'next_cmd: loop {

@@ -7,10 +7,42 @@ pub fn rust_panic_handler(info: &core::panic::PanicInfo) -> ! {
     unsafe { reset() }
 }
 
+
+
+
 #[no_mangle]
-pub extern "C" fn panic_handler() -> ! {
-    crate::uart::print("Non rust Panic ???... resetting\n");
-    unsafe { reset() }
+pub extern "C" fn trap_handler(mcause: usize, mepc: usize) {
+    let sync = mcause & (1 << 63) == 0; 
+    let code = mcause & !(1 << 63);
+    if sync {
+        let mepc = mepc - 1;
+        let desc = match code{
+            0 => "Instruction address misaligned",
+            1 => "Instruction access fault",
+            2 => "Illegal instruction",
+            3 => "Breakpoint",
+            4 => "Load address misaligned",
+            5 => "Load access fault",
+            6 => "Store address mimsaligned",
+            7 => "Store access fault",
+            8 => "Env call from U-mode",
+            9 => "Env call from S-mode",
+            11 => {
+                println!("\nEnv call from M-mode... returning");
+                return;
+            },
+            12 => "Instruction page fault",
+            13 => "Page fault on load",
+            15 => "Page fault on store",
+            _ => "Unknown exception",
+        };
+        let ins = unsafe{ (mepc as *const u32).read() };
+        println!("\n\n\n{desc}:\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}, ins: 0x{ins:08x}\nCannot continue resetting\n\n");
+        unsafe { reset() }
+    }else{
+        println!("\n\n\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}\nCannot continue resetting\n\n");
+        unsafe { reset() }
+    }
 }
 
 #[no_mangle]

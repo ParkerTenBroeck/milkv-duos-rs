@@ -46,6 +46,7 @@ core::arch::global_asm!(
     # write mtvec and make sure it sticks
     la t0, trap_vector
     csrw mtvec, t0
+    // csrw stvec, t0
   
     # set mxstatus to init value
     li x3, 0xc0638000
@@ -111,7 +112,7 @@ core::arch::global_asm!(
   
     .balign 4
   die:
-    j panic_handler
+    ebreak
     j die
     "#,
 
@@ -124,13 +125,105 @@ core::arch::global_asm!(
 
 core::arch::global_asm!(
     r#"
-    .balign 4
     .globl  trap_vector
 
-    .option norvc
     .section .text.trap_vector,"ax",@progbits
     .globl trap_vector
 
+    .balign 4
     trap_vector:
+        # j trap_handler
+        addi sp, sp, -8 * 29
+        sw x1, 1 * 8( sp )
+        sw x5, 2 * 8( sp )
+        sw x6, 3 * 8( sp )
+        sw x7, 4 * 8( sp )
+        sw x8, 5 * 8( sp )
+        sw x9, 6 * 8( sp )
+        sw x10, 7 * 8( sp )
+        sw x11, 8 * 8( sp )
+        sw x12, 9 * 8( sp )
+        sw x13, 10 * 8( sp )
+        sw x14, 11 * 8( sp )
+        sw x15, 12 * 8( sp )
+        sw x16, 13 * 8( sp )
+        sw x17, 14 * 8( sp )
+        sw x18, 15 * 8( sp )
+        sw x19, 16 * 8( sp )
+        sw x20, 17 * 8( sp )
+        sw x21, 18 * 8( sp )
+        sw x22, 19 * 8( sp )
+        sw x23, 20 * 8( sp )
+        sw x24, 21 * 8( sp )
+        sw x25, 22 * 8( sp )
+        sw x26, 23 * 8( sp )
+        sw x27, 24 * 8( sp )
+        sw x28, 25 * 8( sp )
+        sw x29, 26 * 8( sp )
+        sw x30, 27 * 8( sp )
+        sw x31, 28 * 8( sp )
+
+        csrr t0, mstatus
+        sw t0, 29 * 8( sp )
+
+        csrr a0, mcause
+        csrr a1, mepc
+
+        # test if asynchronous
+        srli a2, a0, 64 - 1		/* MSB of mcause is 1 if handing an asynchronous interrupt - shift to LSB to clear other bits. */
+        beq a2, x0, handle_synchronous		/* Branch past interrupt handing if not asynchronous. */
+        	
+
+    handle_asynchronous:
+        sw a1, 0( sp )
+        jal trap_handler
+        j return
+
+    handle_synchronous:
+        addi a1, a1, 4
+        sw a1, 0( sp )
+        jal trap_handler
+
+
+    return:
+
+        lw t0, 0(sp)
+        csrw mepc, t0
+
+        lw t0, 29 * 8(sp)
+        csrw mstatus, t0
+
+        
+        lw x1, 1 * 8( sp )
+        lw x5, 2 * 8( sp )
+        lw x6, 3 * 8( sp )
+        lw x7, 4 * 8( sp )
+        lw x8, 5 * 8( sp )
+        lw x9, 6 * 8( sp )
+        lw x10, 7 * 8( sp )
+        lw x11, 8 * 8( sp )
+        lw x12, 9 * 8( sp )
+        lw x13, 10 * 8( sp )
+        lw x14, 11 * 8( sp )
+        lw x15, 12 * 8( sp )
+        lw x16, 13 * 8( sp )
+        lw x17, 14 * 8( sp )
+        lw x18, 15 * 8( sp )
+        lw x19, 16 * 8( sp )
+        lw x20, 17 * 8( sp )
+        lw x21, 18 * 8( sp )
+        lw x22, 19 * 8( sp )
+        lw x23, 20 * 8( sp )
+        lw x24, 21 * 8( sp )
+        lw x25, 22 * 8( sp )
+        lw x26, 23 * 8( sp )
+        lw x27, 24 * 8( sp )
+        lw x28, 25 * 8( sp )
+        lw x29, 26 * 8( sp )
+        lw x30, 27 * 8( sp )
+        lw x31, 28 * 8( sp ) 
+        addi sp, sp, 8 * 29
+
+        mret
     "#
 );

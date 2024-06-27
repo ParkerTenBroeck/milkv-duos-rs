@@ -41,7 +41,7 @@ pub const UART_LCR_8N1: u32 = 0x03;
 
 const UART0: *mut UartRegs = (0x04000000 + 0x00140000) as *mut UartRegs;
 
-#[inline(never)]
+#[inline(always)]
 pub unsafe fn console_init() {
     // int baudrate = baud_rate;
     // int uart_clock = uart_clk;
@@ -65,7 +65,7 @@ pub unsafe fn console_init() {
     lcr.write_volatile(3);
 }
 
-#[inline(never)]
+#[inline(always)]
 pub fn print_b(char: u8) {
     unsafe {
         let lsr = core::ptr::addr_of_mut!((*UART0).lsr);
@@ -84,7 +84,7 @@ pub fn print_c(char: u8) {
     print_b(char);
 }
 
-#[inline(never)]
+#[inline(always)]
 pub fn print(msg: &str) {
     for b in msg.bytes() {
         print_c(b);
