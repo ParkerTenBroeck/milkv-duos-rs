@@ -34,6 +34,13 @@ pub fn get_timer_value() -> u64 {
     val
 }
 
+pub fn get_timercmp() -> u64{
+    unsafe{
+        let low = (CLINT_TIMECMPL0 as *mut u32).read_volatile() as u64;
+        let high = (CLINT_TIMECMPH0 as *mut u32).read_volatile() as u64;
+        low | (high << 32)
+    }
+}
 
 pub unsafe fn write_timercmp(val: u64) {
     (CLINT_TIMECMPH0 as *mut u32).write_volatile(u32::MAX);
@@ -43,5 +50,5 @@ pub unsafe fn write_timercmp(val: u64) {
 
 pub const CLINT_BASE: u32 = 0x74000000;
 /* CLINT */
-pub const CLINT_TIMECMPL0: u32 = (CLINT_BASE + 0x4000);
-pub const CLINT_TIMECMPH0: u32 = (CLINT_BASE + 0x4004);
+pub const CLINT_TIMECMPL0: u32 = CLINT_BASE + 0x4000;
+pub const CLINT_TIMECMPH0: u32 = CLINT_BASE + 0x4004;

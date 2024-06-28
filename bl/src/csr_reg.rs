@@ -155,11 +155,9 @@ pub unsafe fn clear_mie(val: usize){
 }
 
 pub unsafe fn enable_timer_interrupt(){
-    let val = usize::MAX;
     core::arch::asm!(
         "csrs mie, {0}",
-        // "csrs sie, {0}",
-        in(reg) val
+        in(reg) 0b10000000
     )
 }
 

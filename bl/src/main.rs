@@ -629,6 +629,10 @@ const COMAMNDS: &[&'static dyn Command] = &[
     cmd!("invcache", "", (self, _args) -> {
       csr_reg::invalidate_d_cache()
     }),
+    cmd!("mtimer", "reads mtime/mtimecmp", (self, _args) -> {
+      println!("mtimer:    0x{:016x}", timer::get_timer_value());
+      println!("mtimercmp: 0x{:016x}", timer::get_timercmp());
+    }),
     cmd!("timer", "(t: usize, op: [Read, Ei, E, C, Ci, SetVal], val: u32 = 0)", (self, args) -> {
       args!(args, (t: usize, op: TimerOp, val: u32 = 0));
       let base = 0x030A0000;
@@ -738,7 +742,7 @@ pub extern "C" fn bl_rust_main() {
     unsafe{
       csr_reg::enable_timer_interrupt();
       csr_reg::enable_interrupts();
-      // csr_reg::enable_timer_1();
+      // trigger an interrupt NOW
       timer::write_timercmp(0);
     }
     uart::print("Enabling interrupts\n");
