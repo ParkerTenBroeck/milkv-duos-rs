@@ -11,7 +11,7 @@ pub fn rust_panic_handler(info: &core::panic::PanicInfo) -> ! {
 
 
 #[no_mangle]
-pub extern "C" fn trap_handler(mcause: usize, mepc: usize) {
+pub extern "C" fn trap_handler(mcause: usize, mepc: usize, mtval: usize) {
     let sync = mcause & (1 << 63) == 0; 
     let code = mcause & !(1 << 63);
     if sync {
@@ -37,11 +37,21 @@ pub extern "C" fn trap_handler(mcause: usize, mepc: usize) {
             _ => "Unknown exception",
         };
         let ins = unsafe{ (mepc as *const u32).read() };
-        println!("\n\n\n{desc}:\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}, ins: 0x{ins:08x}\nCannot continue resetting\n\n");
+        println!("\n\n\n{desc}:\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}, mtval: 0x{mtval:016x}, ins: 0x{ins:08x}\nCannot continue resetting\n\n");
         unsafe { reset() }
     }else{
-        println!("\n\n\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}\nCannot continue resetting\n\n");
-        unsafe { reset() }
+        if code == 0x7{
+            // println!("\nTimer interrupt");
+            let next = timer::SYS_COUNTER_FREQ_IN_US * 250 * 1000;
+            let next = next.wrapping_add(timer::get_timer_value());
+            unsafe{
+                timer::write_timercmp(next);
+            }
+            gpio::set_gpio0(29, !gpio::read_gpio0(29));
+        }else{
+            println!("\n\n\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}, mtval: 0x{mtval:016x}\nCannot continue resetting\n\n");
+            unsafe { reset() }
+        }
     }
 }
 

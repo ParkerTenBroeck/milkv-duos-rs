@@ -461,6 +461,9 @@ fn print_csr_regs(){
       index += v.1;
     }
   }
+
+  println!("medeleg   0x{:016x}", csr_reg::medeleg());
+  println!("mideleg   0x{:016x}", csr_reg::mideleg());
   {
     let mip = csr_reg::read_mip();
     println!("mip       0x{:016x}", mip);
@@ -642,6 +645,7 @@ const COMAMNDS: &[&'static dyn Command] = &[
               println!("Timer{t} enable: {}", ctrl & 1 == 1);
             }
             println!("Timer{t} int stat: {}", tim.add(4).read_volatile());
+            println!("Timer int stat: 0b{:08b}", ((base+0xa8) as *const u32).read_volatile());
           },
           TimerOp::Ei => unsafe{
             let mut ctrl = tim.add(2).read_volatile();
@@ -705,6 +709,13 @@ const COMAMNDS: &[&'static dyn Command] = &[
         csr_reg::clear_mie(val);
       }
     }),
+    // cmd!("msipr", "", (self, args) -> {
+    //   unsafe{
+    //     core::arch::asm!(
+    //       ""
+    //     )
+    //   }
+    // }),
 ];
 
 
@@ -720,13 +731,15 @@ pub extern "C" fn bl_rust_main() {
     unsafe{
       // set pinmux to enable output of LED pin
       mmio_write_32!(0x03001074, 0x3);
+      gpio::set_gpio0_direction(29, gpio::Direction::Output);
     }
     uart::print("Connfigured pinmux(LED pin 29)\n");
 
     unsafe{
-      csr_reg::enable_interrupts();
       csr_reg::enable_timer_interrupt();
-      csr_reg::enable_timer_1();
+      csr_reg::enable_interrupts();
+      // csr_reg::enable_timer_1();
+      timer::write_timercmp(0);
     }
     uart::print("Enabling interrupts\n");
 

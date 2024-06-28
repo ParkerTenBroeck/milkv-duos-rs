@@ -163,6 +163,28 @@ pub unsafe fn enable_timer_interrupt(){
     )
 }
 
+pub fn medeleg() -> usize{
+    unsafe{
+        let val: usize;
+        core::arch::asm!(
+            "csrr {0}, medeleg",
+            out(reg) val
+        );
+        val
+    }
+}
+
+pub fn mideleg() -> usize{
+    unsafe{
+        let val: usize;
+        core::arch::asm!(
+            "csrr {0}, mideleg",
+            out(reg) val
+        );
+        val
+    }
+}
+
 pub unsafe fn enable_timer_1(){
     // load value
     (0x030A0000 as *mut u32).write_volatile(0x10000);

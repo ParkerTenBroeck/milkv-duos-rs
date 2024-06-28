@@ -134,40 +134,41 @@ core::arch::global_asm!(
     trap_vector:
         # j trap_handler
         addi sp, sp, -8 * 29
-        sw x1, 1 * 8( sp )
-        sw x5, 2 * 8( sp )
-        sw x6, 3 * 8( sp )
-        sw x7, 4 * 8( sp )
-        sw x8, 5 * 8( sp )
-        sw x9, 6 * 8( sp )
-        sw x10, 7 * 8( sp )
-        sw x11, 8 * 8( sp )
-        sw x12, 9 * 8( sp )
-        sw x13, 10 * 8( sp )
-        sw x14, 11 * 8( sp )
-        sw x15, 12 * 8( sp )
-        sw x16, 13 * 8( sp )
-        sw x17, 14 * 8( sp )
-        sw x18, 15 * 8( sp )
-        sw x19, 16 * 8( sp )
-        sw x20, 17 * 8( sp )
-        sw x21, 18 * 8( sp )
-        sw x22, 19 * 8( sp )
-        sw x23, 20 * 8( sp )
-        sw x24, 21 * 8( sp )
-        sw x25, 22 * 8( sp )
-        sw x26, 23 * 8( sp )
-        sw x27, 24 * 8( sp )
-        sw x28, 25 * 8( sp )
-        sw x29, 26 * 8( sp )
-        sw x30, 27 * 8( sp )
-        sw x31, 28 * 8( sp )
+        sd x1, 1 * 8( sp )
+        sd x5, 2 * 8( sp )
+        sd x6, 3 * 8( sp )
+        sd x7, 4 * 8( sp )
+        sd x8, 5 * 8( sp )
+        sd x9, 6 * 8( sp )
+        sd x10, 7 * 8( sp )
+        sd x11, 8 * 8( sp )
+        sd x12, 9 * 8( sp )
+        sd x13, 10 * 8( sp )
+        sd x14, 11 * 8( sp )
+        sd x15, 12 * 8( sp )
+        sd x16, 13 * 8( sp )
+        sd x17, 14 * 8( sp )
+        sd x18, 15 * 8( sp )
+        sd x19, 16 * 8( sp )
+        sd x20, 17 * 8( sp )
+        sd x21, 18 * 8( sp )
+        sd x22, 19 * 8( sp )
+        sd x23, 20 * 8( sp )
+        sd x24, 21 * 8( sp )
+        sd x25, 22 * 8( sp )
+        sd x26, 23 * 8( sp )
+        sd x27, 24 * 8( sp )
+        sd x28, 25 * 8( sp )
+        sd x29, 26 * 8( sp )
+        sd x30, 27 * 8( sp )
+        sd x31, 28 * 8( sp )
 
         csrr t0, mstatus
-        sw t0, 29 * 8( sp )
+        sd t0, 29 * 8( sp )
 
         csrr a0, mcause
         csrr a1, mepc
+        csrr a2, mtval
 
         # test if asynchronous
         srli a2, a0, 64 - 1		/* MSB of mcause is 1 if handing an asynchronous interrupt - shift to LSB to clear other bits. */
@@ -175,55 +176,81 @@ core::arch::global_asm!(
         	
 
     handle_asynchronous:
-        sw a1, 0( sp )
+        sd a1, 0( sp )
         jal trap_handler
         j return
 
     handle_synchronous:
         addi a1, a1, 4
-        sw a1, 0( sp )
+        sd a1, 0( sp )
         jal trap_handler
 
 
     return:
 
-        lw t0, 0(sp)
+        ld t0, 0(sp)
         csrw mepc, t0
 
-        lw t0, 29 * 8(sp)
+        ld t0, 29 * 8(sp)
         csrw mstatus, t0
 
         
-        lw x1, 1 * 8( sp )
-        lw x5, 2 * 8( sp )
-        lw x6, 3 * 8( sp )
-        lw x7, 4 * 8( sp )
-        lw x8, 5 * 8( sp )
-        lw x9, 6 * 8( sp )
-        lw x10, 7 * 8( sp )
-        lw x11, 8 * 8( sp )
-        lw x12, 9 * 8( sp )
-        lw x13, 10 * 8( sp )
-        lw x14, 11 * 8( sp )
-        lw x15, 12 * 8( sp )
-        lw x16, 13 * 8( sp )
-        lw x17, 14 * 8( sp )
-        lw x18, 15 * 8( sp )
-        lw x19, 16 * 8( sp )
-        lw x20, 17 * 8( sp )
-        lw x21, 18 * 8( sp )
-        lw x22, 19 * 8( sp )
-        lw x23, 20 * 8( sp )
-        lw x24, 21 * 8( sp )
-        lw x25, 22 * 8( sp )
-        lw x26, 23 * 8( sp )
-        lw x27, 24 * 8( sp )
-        lw x28, 25 * 8( sp )
-        lw x29, 26 * 8( sp )
-        lw x30, 27 * 8( sp )
-        lw x31, 28 * 8( sp ) 
+        ld x1, 1 * 8( sp )
+        ld x5, 2 * 8( sp )
+        ld x6, 3 * 8( sp )
+        ld x7, 4 * 8( sp )
+        ld x8, 5 * 8( sp )
+        ld x9, 6 * 8( sp )
+        ld x10, 7 * 8( sp )
+        ld x11, 8 * 8( sp )
+        ld x12, 9 * 8( sp )
+        ld x13, 10 * 8( sp )
+        ld x14, 11 * 8( sp )
+        ld x15, 12 * 8( sp )
+        ld x16, 13 * 8( sp )
+        ld x17, 14 * 8( sp )
+        ld x18, 15 * 8( sp )
+        ld x19, 16 * 8( sp )
+        ld x20, 17 * 8( sp )
+        ld x21, 18 * 8( sp )
+        ld x22, 19 * 8( sp )
+        ld x23, 20 * 8( sp )
+        ld x24, 21 * 8( sp )
+        ld x25, 22 * 8( sp )
+        ld x26, 23 * 8( sp )
+        ld x27, 24 * 8( sp )
+        ld x28, 25 * 8( sp )
+        ld x29, 26 * 8( sp )
+        ld x30, 27 * 8( sp )
+        ld x31, 28 * 8( sp ) 
         addi sp, sp, 8 * 29
 
         mret
     "#
 );
+
+/* RISC-V */
+pub const PLIC_BASE: u32 = 0x70000000;
+
+
+// pub const CLINT_MTIME(cnt): u32 = asm volatile("csrr %0, time\n" : "=r"(cnt) :: "memory");
+
+/* PLIC */
+pub const PLIC_PRIORITY0: u32 = (PLIC_BASE + 0x0);
+pub const PLIC_PRIORITY1: u32 = (PLIC_BASE + 0x4);
+pub const PLIC_PRIORITY2: u32 = (PLIC_BASE + 0x8);
+pub const PLIC_PRIORITY3: u32 = (PLIC_BASE + 0xc);
+pub const PLIC_PRIORITY4: u32 = (PLIC_BASE + 0x10);
+
+pub const PLIC_PENDING1: u32 = (PLIC_BASE + 0x1000);
+pub const PLIC_PENDING2: u32 = (PLIC_BASE + 0x1004);
+pub const PLIC_PENDING3: u32 = (PLIC_BASE + 0x1008);
+pub const PLIC_PENDING4: u32 = (PLIC_BASE + 0x100C);
+
+pub const PLIC_ENABLE1: u32 = (PLIC_BASE + 0x2000);
+pub const PLIC_ENABLE2: u32 = (PLIC_BASE + 0x2004);
+pub const PLIC_ENABLE3: u32 = (PLIC_BASE + 0x2008);
+pub const PLIC_ENABLE4: u32 = (PLIC_BASE + 0x200C);
+
+pub const PLIC_THRESHOLD: u32 = (PLIC_BASE + 0x200000);
+pub const PLIC_CLAIM: u32 = (PLIC_BASE + 0x200004);
