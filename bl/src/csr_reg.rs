@@ -117,12 +117,15 @@ pub fn read_mie() -> usize{
 
 pub unsafe fn enable_interrupts(){
     core::arch::asm!(
-        // "csrc mstatus, {0}",
         "csrs mstatus, {0}",
-        // "csrs sstatus, {2}",
-        // in(reg) 0x1800,
         in(reg) 0b1000,
-        // in(reg) 0b10,
+    );
+}
+
+pub unsafe fn disable_interrupts(){
+    core::arch::asm!(
+        "csrc mstatus, {0}",
+        in(reg) 0b1000,
     );
 }
 
@@ -161,6 +164,13 @@ pub unsafe fn enable_timer_interrupt(){
     )
 }
 
+pub unsafe fn enable_external_interrupt()  {
+    core::arch::asm!(
+        "csrs mie, {0}",
+        in(reg) 0b100000000000
+    )
+}
+
 pub fn medeleg() -> usize{
     unsafe{
         let val: usize;
@@ -183,9 +193,3 @@ pub fn mideleg() -> usize{
     }
 }
 
-pub unsafe fn enable_timer_1(){
-    // load value
-    (0x030A0000 as *mut u32).write_volatile(0x10000);
-    // enabled with interrupts
-    (0x030A0008 as *mut u32).write_volatile(0b011);
-}

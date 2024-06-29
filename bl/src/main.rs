@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 #![feature(asm_const)]
+#![allow(internal_features)]
+#![feature(core_intrinsics)]
 
 pub mod csr_reg;
 pub mod ddr;
@@ -13,6 +15,8 @@ pub mod timer;
 pub mod uart;
 pub mod efuse;
 pub mod pinmux;
+pub mod plic;
+pub mod interrupt_vector;
 
 use panic::reset;
 pub use prelude::*;
@@ -630,10 +634,10 @@ const COMAMNDS: &[&'static dyn Command] = &[
       csr_reg::invalidate_d_cache()
     }),
     cmd!("mtimer", "reads mtime/mtimecmp", (self, _args) -> {
-      println!("mtimer:    0x{:016x}", timer::get_timer_value());
+      println!("mtimer:    0x{:016x}", timer::get_mtimer());
       println!("mtimercmp: 0x{:016x}", timer::get_timercmp());
     }),
-    cmd!("timer", "(t: usize, op: [Read, Ei, E, C, Ci, SetVal], val: u32 = 0)", (self, args) -> {
+    cmd!("timer", "(t: usize, op: [Read, Ei, E, C, Ci, Set], val: u32 = 0)", (self, args) -> {
       args!(args, (t: usize, op: TimerOp, val: u32 = 0));
       let base = 0x030A0000;
       let tbase = base + t * 0x14;
@@ -713,13 +717,23 @@ const COMAMNDS: &[&'static dyn Command] = &[
         csr_reg::clear_mie(val);
       }
     }),
-    // cmd!("msipr", "", (self, args) -> {
-    //   unsafe{
-    //     core::arch::asm!(
-    //       ""
-    //     )
-    //   }
-    // }),
+    cmd!("plicd", "", (self, _args) -> {
+      unsafe{
+        plic::disp();
+      }
+    }),
+    cmd!("plics", "(int: u32, pri: u32)", (self, args) -> {
+      args!(args, (int: u32, pri: u32));
+      unsafe{
+        if pri == 0{
+          plic::set_priority(int, pri);
+          plic::enable_m_interrupt(int);
+        }else{
+          plic::set_priority(int, 0);
+          plic::disable_m_interrupt(int);
+        }
+      }
+    }),
 ];
 
 
@@ -739,13 +753,46 @@ pub extern "C" fn bl_rust_main() {
     }
     uart::print("Connfigured pinmux(LED pin 29)\n");
 
+    uart::print("Enabling interrupts\n");
     unsafe{
       csr_reg::enable_timer_interrupt();
       csr_reg::enable_interrupts();
       // trigger an interrupt NOW
-      timer::write_timercmp(0);
+      timer::set_timercmp(0);
+
+
+      // plic is seen as a single external interrupt source
+      csr_reg::enable_external_interrupt();
+      // all enabled interrupts allowed
+      plic::mint_threshhold(0);
+
+
+      //--------------- timer 2 initialization ----------------------
+      // timer 0 interrupt number
+      plic::set_priority(79, 1);
+      plic::enable_m_interrupt(79);
+
+      // initialize timer0
+      timer::mm::set_mode(timer::mm::TIMER0, timer::mm::TimerMode::Count);
+      // half second
+      timer::mm::set_load_value(timer::mm::TIMER0, timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 4);
+      timer::mm::set_enabled(timer::mm::TIMER0, true);
+      //-------------------------------------
+
+
+      //------------- timer 1 initialization ----------------------
+      plic::set_priority(80, 1);
+      plic::enable_m_interrupt(80);
+
+
+      // initialize timer1
+      timer::mm::set_mode(timer::mm::TIMER1, timer::mm::TimerMode::Count);
+      // second
+      timer::mm::set_load_value(timer::mm::TIMER1, timer::SYS_COUNTER_FREQ_IN_SECOND as u32);
+      // timer::mm::set_enabled(timer::mm::TIMER1, true);
+      //-------------------------------------
     }
-    uart::print("Enabling interrupts\n");
+    uart::print("Interrupts enabled\n");
 
     uart::print("Starting console\n");
 

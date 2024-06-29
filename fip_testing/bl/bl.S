@@ -74,11 +74,6 @@ bl_entrypoint:
   li x3, 0xc0638000
   csrw mxstatus, x3
 
-  # set plic_ctrl = 1
-  li x3, 0x701FFFFC # plic_base + 0x1FFFFC
-  li x4, 1
-  sw x4 , 0(x3)
-
   // invalidate all memory for BTB,BHT,DCACHE,ICACHE
   li x3, 0x30013
   csrs mcor, x3
