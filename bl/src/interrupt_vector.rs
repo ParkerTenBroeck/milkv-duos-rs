@@ -1,6 +1,6 @@
 use core::{ptr::NonNull, sync::atomic::AtomicPtr};
 
-use milkv_rs::{gpio, mmio, plic, timer, uart};
+use milkv_rs::{plic, timer};
 
 use crate::println;
 
