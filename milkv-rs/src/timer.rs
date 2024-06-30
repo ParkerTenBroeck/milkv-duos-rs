@@ -52,6 +52,17 @@ pub unsafe fn add_timercmp(val: u64) {
 pub mod mm {
     use core::ptr::addr_of_mut;
 
+    use crate::mmio::TIMERS;
+
+
+    #[repr(C)]
+    pub struct Timers{
+        pub timers: [Timer; 8],
+        pub int_status: u32,
+        pub eio: u32,
+        pub raw_int_status: u32,
+    }
+
     #[repr(C)]
     pub struct Timer {
         pub load: u32,
@@ -66,15 +77,6 @@ pub mod mm {
         Count,
     }
 
-    pub const TIMER_BASE: usize = 0x030A0000;
-    pub const TIMER0: *mut Timer = (TIMER_BASE + 0 * core::mem::size_of::<Timer>()) as *mut Timer;
-    pub const TIMER1: *mut Timer = (TIMER_BASE + 1 * core::mem::size_of::<Timer>()) as *mut Timer;
-    pub const TIMER2: *mut Timer = (TIMER_BASE + 2 * core::mem::size_of::<Timer>()) as *mut Timer;
-    pub const TIMER3: *mut Timer = (TIMER_BASE + 3 * core::mem::size_of::<Timer>()) as *mut Timer;
-    pub const TIMER4: *mut Timer = (TIMER_BASE + 4 * core::mem::size_of::<Timer>()) as *mut Timer;
-    pub const TIMER5: *mut Timer = (TIMER_BASE + 5 * core::mem::size_of::<Timer>()) as *mut Timer;
-    pub const TIMER6: *mut Timer = (TIMER_BASE + 6 * core::mem::size_of::<Timer>()) as *mut Timer;
-    pub const TIMER7: *mut Timer = (TIMER_BASE + 7 * core::mem::size_of::<Timer>()) as *mut Timer;
 
     pub unsafe fn set_load_value(timer: *mut Timer, value: u32) {
         addr_of_mut!((*timer).load).write_volatile(value);
@@ -139,14 +141,14 @@ pub mod mm {
     }
 
     pub unsafe fn get_all_int_status() -> u32 {
-        ((TIMER_BASE + 0xa0) as *const u32).read_volatile()
+        addr_of_mut!((*TIMERS).int_status).read_volatile()
     }
 
     pub unsafe fn clear_all_int() {
-        ((TIMER_BASE + 0xa4) as *const u32).read_volatile();
+        addr_of_mut!((*TIMERS).eio).read_volatile();
     }
 
     pub unsafe fn get_all_raw_int_status() -> u32 {
-        ((TIMER_BASE + 0xa8) as *const u32).read_volatile()
+        addr_of_mut!((*TIMERS).raw_int_status).read_volatile()
     }
 }

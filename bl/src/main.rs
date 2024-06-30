@@ -770,38 +770,35 @@ pub extern "C" fn bl_rust_main() {
         // trigger an interrupt NOW
         timer::set_timercmp(timer::get_mtimer());
 
+        
         // plic is seen as a single external interrupt source
         csr::enable_external_interrupt();
         // all enabled interrupts allowed
         plic::mint_threshhold(0);
 
-        //--------------- timer 2 initialization ----------------------
+        //--------------- timer 0 initialization ----------------------
+        interrupt_vector::add_plic_handler(interrupt::TIMER0, ||{
+            gpio::set_gpio0(29, !gpio::read_gpio0(29));
+            timer::mm::clear_int(mmio::TIMER0);
+        });
+        
         // timer 0 interrupt number
-        plic::set_priority(79, 1);
-        plic::enable_m_interrupt(79);
+        plic::set_priority(interrupt::TIMER0, 1);
+        plic::enable_m_interrupt(interrupt::TIMER0);
 
         // initialize timer0
-        timer::mm::set_mode(timer::mm::TIMER0, timer::mm::TimerMode::Count);
+        timer::mm::set_mode(mmio::TIMER0, timer::mm::TimerMode::Count);
         // quarter second
-        timer::mm::set_load_value(
-            timer::mm::TIMER0,
-            timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 4,
-        );
-        timer::mm::set_enabled(timer::mm::TIMER0, true);
-        //-------------------------------------
-
-        //------------- timer 1 initialization ----------------------
-        plic::set_priority(80, 1);
-        plic::enable_m_interrupt(80);
-
-        // initialize timer1
-        timer::mm::set_mode(timer::mm::TIMER1, timer::mm::TimerMode::Count);
-        // second
-        timer::mm::set_load_value(timer::mm::TIMER1, timer::SYS_COUNTER_FREQ_IN_SECOND as u32);
-        // timer::mm::set_enabled(timer::mm::TIMER1, true);
+        timer::mm::set_load_value(mmio::TIMER0, timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 4);
+        timer::mm::set_enabled(mmio::TIMER0, true);
         //-------------------------------------
     }
     uart::print("Interrupts enabled\n");
+
+    unsafe {
+        ddr::init_ddr();
+    }
+    uart::print("DDR initialized\n");
 
     uart::print("Starting console\n");
 

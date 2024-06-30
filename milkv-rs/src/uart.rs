@@ -1,14 +1,67 @@
+use crate::mmio::UART0;
+
 #[allow(unused)]
 #[repr(C)]
-struct UartRegs {
-    rbr: u32, /* 0x00 Data register */
-    ier: u32, /* 0x04 Interrupt Enable Register */
-    fcr: u32, /* 0x08 FIFO Control Register */
-    lcr: u32, /* 0x0C Line control register */
-    mcr: u32, /* 0x10 Line control register */
-    lsr: u32, /* 0x14 Line Status Register */
-    msr: u32, /* 0x18 Modem Status Register */
-    spr: u32, /* 0x20 Scratch Register */
+pub struct Uart {
+    /// Receive bufferm transmit holding, or divisor latch low
+    pub rbr_thr_dll: u32, 
+    /// Interrupt enable or divisor latch high byte
+    pub ier_dlh: u32,
+    /// FIFO control or interrupt identification 
+    pub fcr_iir: u32,
+    /// Line control 
+    pub lcr: u32, 
+    /// Modem control
+    pub mcr: u32, 
+    /// Line status
+    pub lsr: u32, 
+    /// Modem status
+    pub msr: u32,
+
+    _reserved0: [u32; 1],
+
+    /// Low power divisor latch (low)
+    pub lpdll: u32, 
+    /// Low power divisor latch (high)
+    pub lpdlh: u32,
+    
+    _reserved1: [u32; 2],
+
+    /// Shadow recieve / transmit buffer
+    pub srbr_sthr: u32,
+
+    _reserved2: [u8; 0x3c],
+
+    /// FIFO access
+    pub far: u32,
+    /// Transmit FIFO read
+    pub tfr: u32,
+    /// Recieve FIFO write
+    pub rfw: u32,
+    /// UART status register
+    pub usr: u32,
+    /// Transmit FIFO level
+    pub tfl: u32,
+    /// Recieve FIFO level
+    pub rfl: u32,
+    /// Software reset register
+    pub srr: u32,
+    /// Shadow request to send
+    pub srts: u32,
+    /// Shadow break control
+    pub sbcr: u32,
+    /// Shadow DMA mode
+    pub sdmam: u32,
+    /// Shadow FIFO enable
+    pub sfe: u32,
+    /// Shadow RCVR trigger
+    pub srt: u32,
+    /// Shadow TX empty trigger
+    pub stet: u32,
+    /// Halt TX
+    pub htx: u32,
+    /// DMA software acknowledge
+    pub dmasa: u32,
 }
 
 pub const UART_LCR_WLS_MSK: u32 = 0x03; /* character length select mask */
@@ -39,7 +92,6 @@ pub const UART_MCRVAL: u32 = UART_MCR_DTR | UART_MCR_RTS; /* RTS/DTR */
 pub const UART_FCR_DEFVAL: u32 = UART_FCR_FIFO_EN | UART_FCR_RXSR | UART_FCR_TXSR;
 pub const UART_LCR_8N1: u32 = 0x03;
 
-const UART0: *mut UartRegs = (0x04000000 + 0x00140000) as *mut UartRegs;
 
 #[inline(always)]
 pub unsafe fn console_init() {
@@ -49,15 +101,15 @@ pub unsafe fn console_init() {
     let divisor = 14; //uart_clock / (16 * baudrate);
 
     let lcr = core::ptr::addr_of_mut!((*UART0).lcr);
-    let ier = core::ptr::addr_of_mut!((*UART0).ier);
-    let dll = core::ptr::addr_of_mut!((*UART0).rbr);
-    let dlm = core::ptr::addr_of_mut!((*UART0).ier);
+    let ier = core::ptr::addr_of_mut!((*UART0).ier_dlh);
+    let dll = core::ptr::addr_of_mut!((*UART0).rbr_thr_dll);
+    let dlh = ier;
     let mcr = core::ptr::addr_of_mut!((*UART0).mcr);
-    let fcr = core::ptr::addr_of_mut!((*UART0).fcr);
+    let fcr = core::ptr::addr_of_mut!((*UART0).fcr_iir);
 
     lcr.write_volatile(lcr.read_volatile() | UART_LCR_DLAB | UART_LCR_8N1);
     dll.write_volatile(divisor & 0xff);
-    dlm.write_volatile((divisor >> 8) & 0xff);
+    dlh.write_volatile((divisor >> 8) & 0xff);
     lcr.write_volatile(lcr.read_volatile() & (!UART_LCR_DLAB));
     ier.write_volatile(0);
     mcr.write_volatile(UART_MCRVAL);
@@ -69,7 +121,7 @@ pub unsafe fn console_init() {
 pub fn print_b(char: u8) {
     unsafe {
         let lsr = core::ptr::addr_of_mut!((*UART0).lsr);
-        let rbr = core::ptr::addr_of_mut!((*UART0).rbr);
+        let rbr = core::ptr::addr_of_mut!((*UART0).rbr_thr_dll);
 
         while (lsr.read_volatile() & UART_LSR_THRE) == 0 {}
         rbr.write_volatile(char as u32);
@@ -94,7 +146,7 @@ pub fn print(msg: &str) {
 pub fn get_b() -> u8 {
     unsafe {
         let lsr = core::ptr::addr_of_mut!((*UART0).lsr);
-        let rbr = core::ptr::addr_of_mut!((*UART0).rbr);
+        let rbr = core::ptr::addr_of_mut!((*UART0).rbr_thr_dll);
 
         while (lsr.read_volatile() & UART_LSR_DR) == 0 {}
         rbr.read_volatile() as u8

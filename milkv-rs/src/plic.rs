@@ -1,5 +1,7 @@
 use core::ptr::addr_of_mut;
 
+use crate::mmio::PLIC;
+
 pub const MAX_INT_ID: usize = 128;
 
 #[repr(C)]
@@ -65,8 +67,6 @@ pub struct Plic {
 
     _reserved9: [u32; 0xFFC / 4 - 1],
 }
-
-pub const PLIC: *mut Plic = 0x70000000 as *mut Plic;
 
 pub unsafe fn mclaim_int() -> u32 {
     addr_of_mut!((*PLIC).h0_mclaim).read_unaligned()

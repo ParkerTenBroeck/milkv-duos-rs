@@ -1,4 +1,6 @@
-use milkv_rs::{gpio, plic, timer, uart};
+use core::{ptr::NonNull, sync::atomic::AtomicPtr};
+
+use milkv_rs::{gpio, mmio, plic, timer, uart};
 
 use crate::println;
 
@@ -108,6 +110,9 @@ core::arch::global_asm!(
     "#
 );
 
+static PLIC_HANDLERS: [AtomicPtr<()>; milkv_rs::plic::MAX_INT_ID] =
+    [const { AtomicPtr::new(core::ptr::null_mut()) }; milkv_rs::plic::MAX_INT_ID];
+
 #[no_mangle]
 pub extern "C" fn mtrap_handler(mcause: usize, mepc: usize, mtval: usize) {
     let sync = mcause & (1 << 63) == 0;
@@ -149,8 +154,18 @@ pub extern "C" fn mtrap_handler(mcause: usize, mepc: usize, mtval: usize) {
             }
             0xb => {
                 let pending = unsafe { plic::mclaim_int() };
+                use core::sync::atomic::Ordering;
                 if pending != 0 {
-                    plic_handler(mtval, pending);
+                    if let Some(ptr) = PLIC_HANDLERS
+                        .get(pending as usize)
+                        .and_then(|v| NonNull::new(v.load(Ordering::Acquire)))
+                    {
+                        let func: fn() = unsafe { core::mem::transmute(ptr) };
+                        func()
+                    } else {
+                        println!("\n\n\nplic: 0x{pending:016x}, mtval: 0x{mtval:016x}\nUnknown plic interrupt value. Cannot continue resetting\n\n");
+                        unsafe { milkv_rs::reset() }
+                    }
                     unsafe {
                         plic::mint_complete(pending);
                     }
@@ -167,19 +182,7 @@ pub extern "C" fn mtrap_handler(mcause: usize, mepc: usize, mtval: usize) {
     }
 }
 
-fn plic_handler(mtval: usize, pending: u32) {
-    match pending {
-        79 => unsafe {
-            gpio::set_gpio0(29, !gpio::read_gpio0(29));
-            timer::mm::clear_int(timer::mm::TIMER0);
-        },
-        80 => unsafe {
-            uart::print("\ntimer1\n");
-            timer::mm::clear_int(timer::mm::TIMER1);
-        },
-        _ => {
-            println!("\n\n\nplic: 0x{pending:016x}, mtval: 0x{mtval:016x}\nUnknown plic interrupt value. Cannot continue resetting\n\n");
-            unsafe { milkv_rs::reset() }
-        }
-    }
+pub fn add_plic_handler(int: u32, handler: fn()) {
+    use core::sync::atomic::Ordering;
+    PLIC_HANDLERS[int as usize].store(unsafe { core::mem::transmute(handler) }, Ordering::Release);
 }

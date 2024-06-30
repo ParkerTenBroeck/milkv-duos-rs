@@ -10,6 +10,9 @@ pub mod plic;
 pub mod security;
 pub mod timer;
 pub mod uart;
+pub mod system;
+pub mod watchdog;
+pub mod interrupt;
 
 #[no_mangle]
 pub unsafe extern "C" fn reset() -> ! {
