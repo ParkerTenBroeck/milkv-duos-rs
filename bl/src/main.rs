@@ -3,9 +3,9 @@
 #![feature(asm_const)]
 
 pub mod entry;
+pub mod interrupt_vector;
 pub mod panic;
 pub mod prelude;
-pub mod interrupt_vector;
 
 pub use prelude::*;
 
@@ -44,71 +44,71 @@ pub fn print_mem_u8(addr_area: usize, size: usize) {
 }
 
 pub fn print_mem_u16(addr_area: usize, size: usize) {
-  const BLOCK_SIZE: usize = 16;
-  let addr_start = addr_area & !(BLOCK_SIZE - 1);
-  let addr_end = (addr_area + size + BLOCK_SIZE - 1) & !(BLOCK_SIZE - 1);
+    const BLOCK_SIZE: usize = 16;
+    let addr_start = addr_area & !(BLOCK_SIZE - 1);
+    let addr_end = (addr_area + size + BLOCK_SIZE - 1) & !(BLOCK_SIZE - 1);
 
-  print!("                  ");
-  for i in (0..BLOCK_SIZE).step_by(core::mem::size_of::<u16>()) {
-      print!("  {i:02X} ");
-  }
-  println!();
+    print!("                  ");
+    for i in (0..BLOCK_SIZE).step_by(core::mem::size_of::<u16>()) {
+        print!("  {i:02X} ");
+    }
+    println!();
 
-  for block_start in (addr_start..addr_end).step_by(BLOCK_SIZE) {
-      print!("0x{block_start:016X}");
-      for i in (0..BLOCK_SIZE).step_by(core::mem::size_of::<u16>()) {
-          let addr = block_start + i;
-          let ptr = addr as *const u16;
-          print!(" {:04X}", unsafe { ptr.read_volatile() });
-      }
-      print!(" ");
-      for i in 0..BLOCK_SIZE {
-          let addr = block_start + i;
-          let ptr = addr as *const u8;
-          let val = unsafe { ptr.read_volatile() };
-          if val.is_ascii_graphic() {
-              print!("{}", val as char);
-          } else {
-              print!(".");
-          }
-      }
+    for block_start in (addr_start..addr_end).step_by(BLOCK_SIZE) {
+        print!("0x{block_start:016X}");
+        for i in (0..BLOCK_SIZE).step_by(core::mem::size_of::<u16>()) {
+            let addr = block_start + i;
+            let ptr = addr as *const u16;
+            print!(" {:04X}", unsafe { ptr.read_volatile() });
+        }
+        print!(" ");
+        for i in 0..BLOCK_SIZE {
+            let addr = block_start + i;
+            let ptr = addr as *const u8;
+            let val = unsafe { ptr.read_volatile() };
+            if val.is_ascii_graphic() {
+                print!("{}", val as char);
+            } else {
+                print!(".");
+            }
+        }
 
-      println!();
-  }
+        println!();
+    }
 }
 
 pub fn print_mem_u32(addr_area: usize, size: usize) {
-  const BLOCK_SIZE: usize = 16;
-  let addr_start = addr_area & !(BLOCK_SIZE - 1);
-  let addr_end = (addr_area + size + BLOCK_SIZE - 1) & !(BLOCK_SIZE - 1);
+    const BLOCK_SIZE: usize = 16;
+    let addr_start = addr_area & !(BLOCK_SIZE - 1);
+    let addr_end = (addr_area + size + BLOCK_SIZE - 1) & !(BLOCK_SIZE - 1);
 
-  print!("                  ");
-  for i in (0..BLOCK_SIZE).step_by(core::mem::size_of::<u32>()) {
-      print!("    {i:02X}   ");
-  }
-  println!();
+    print!("                  ");
+    for i in (0..BLOCK_SIZE).step_by(core::mem::size_of::<u32>()) {
+        print!("    {i:02X}   ");
+    }
+    println!();
 
-  for block_start in (addr_start..addr_end).step_by(BLOCK_SIZE) {
-      print!("0x{block_start:016X}");
-      for i in (0..BLOCK_SIZE).step_by(core::mem::size_of::<u32>()) {
-          let addr = block_start + i;
-          let ptr = addr as *const u32;
-          print!(" {:08X}", unsafe { ptr.read_volatile() });
-      }
-      print!(" ");
-      for i in 0..BLOCK_SIZE {
-          let addr = block_start + i;
-          let ptr = addr as *const u8;
-          let val = unsafe { ptr.read_volatile() };
-          if val.is_ascii_graphic() {
-              print!("{}", val as char);
-          } else {
-              print!(".");
-          }
-      }
+    for block_start in (addr_start..addr_end).step_by(BLOCK_SIZE) {
+        print!("0x{block_start:016X}");
+        for i in (0..BLOCK_SIZE).step_by(core::mem::size_of::<u32>()) {
+            let addr = block_start + i;
+            let ptr = addr as *const u32;
+            print!(" {:08X}", unsafe { ptr.read_volatile() });
+        }
+        print!(" ");
+        for i in 0..BLOCK_SIZE {
+            let addr = block_start + i;
+            let ptr = addr as *const u8;
+            let val = unsafe { ptr.read_volatile() };
+            if val.is_ascii_graphic() {
+                print!("{}", val as char);
+            } else {
+                print!(".");
+            }
+        }
 
-      println!();
-  }
+        println!();
+    }
 }
 
 fn user_in(buffer: &mut [u8]) -> &str {
@@ -242,57 +242,57 @@ impl Argument for u8 {
 }
 
 impl Argument for u16 {
-  const DISP: &str = "u16";
+    const DISP: &str = "u16";
 
-  fn parse(str: &str) -> Result<Self, &'static str> {
-      fn parse_str(str: &str, rad: u32) -> Result<u16, &'static str> {
-          match u16::from_str_radix(str, rad) {
-              Ok(v) => Ok(v),
-              Err(err) => Err(match err.kind() {
-                  core::num::IntErrorKind::Empty => "Empty",
-                  core::num::IntErrorKind::InvalidDigit => "Invalid digit",
-                  core::num::IntErrorKind::PosOverflow => "Integer too large",
-                  core::num::IntErrorKind::NegOverflow => "Integer too small",
-                  core::num::IntErrorKind::Zero => "Cannot be zero",
-                  _ => "",
-              }),
-          }
-      }
-      if str.starts_with("0x") {
-          parse_str(&str[2..], 16)
-      } else if str.starts_with("0b") {
-          parse_str(&str[2..], 2)
-      } else {
-          parse_str(&str, 10)
-      }
-  }
+    fn parse(str: &str) -> Result<Self, &'static str> {
+        fn parse_str(str: &str, rad: u32) -> Result<u16, &'static str> {
+            match u16::from_str_radix(str, rad) {
+                Ok(v) => Ok(v),
+                Err(err) => Err(match err.kind() {
+                    core::num::IntErrorKind::Empty => "Empty",
+                    core::num::IntErrorKind::InvalidDigit => "Invalid digit",
+                    core::num::IntErrorKind::PosOverflow => "Integer too large",
+                    core::num::IntErrorKind::NegOverflow => "Integer too small",
+                    core::num::IntErrorKind::Zero => "Cannot be zero",
+                    _ => "",
+                }),
+            }
+        }
+        if str.starts_with("0x") {
+            parse_str(&str[2..], 16)
+        } else if str.starts_with("0b") {
+            parse_str(&str[2..], 2)
+        } else {
+            parse_str(&str, 10)
+        }
+    }
 }
 
 impl Argument for u32 {
-  const DISP: &str = "u32";
+    const DISP: &str = "u32";
 
-  fn parse(str: &str) -> Result<Self, &'static str> {
-      fn parse_str(str: &str, rad: u32) -> Result<u32, &'static str> {
-          match u32::from_str_radix(str, rad) {
-              Ok(v) => Ok(v),
-              Err(err) => Err(match err.kind() {
-                  core::num::IntErrorKind::Empty => "Empty",
-                  core::num::IntErrorKind::InvalidDigit => "Invalid digit",
-                  core::num::IntErrorKind::PosOverflow => "Integer too large",
-                  core::num::IntErrorKind::NegOverflow => "Integer too small",
-                  core::num::IntErrorKind::Zero => "Cannot be zero",
-                  _ => "",
-              }),
-          }
-      }
-      if str.starts_with("0x") {
-          parse_str(&str[2..], 16)
-      } else if str.starts_with("0b") {
-          parse_str(&str[2..], 2)
-      } else {
-          parse_str(&str, 10)
-      }
-  }
+    fn parse(str: &str) -> Result<Self, &'static str> {
+        fn parse_str(str: &str, rad: u32) -> Result<u32, &'static str> {
+            match u32::from_str_radix(str, rad) {
+                Ok(v) => Ok(v),
+                Err(err) => Err(match err.kind() {
+                    core::num::IntErrorKind::Empty => "Empty",
+                    core::num::IntErrorKind::InvalidDigit => "Invalid digit",
+                    core::num::IntErrorKind::PosOverflow => "Integer too large",
+                    core::num::IntErrorKind::NegOverflow => "Integer too small",
+                    core::num::IntErrorKind::Zero => "Cannot be zero",
+                    _ => "",
+                }),
+            }
+        }
+        if str.starts_with("0x") {
+            parse_str(&str[2..], 16)
+        } else if str.starts_with("0b") {
+            parse_str(&str[2..], 2)
+        } else {
+            parse_str(&str, 10)
+        }
+    }
 }
 
 impl Argument for usize {
@@ -354,28 +354,28 @@ impl Argument for GpioKind {
 }
 
 enum TimerOp {
-  Read,
-  Ei,
-  E,
-  C,
-  Ci,
-  Set,
+    Read,
+    Ei,
+    E,
+    C,
+    Ci,
+    Set,
 }
 
 impl Argument for TimerOp {
-  const DISP: &str = "[Read, Ei, E, C, Ci, Set]";
+    const DISP: &str = "[Read, Ei, E, C, Ci, Set]";
 
-  fn parse(str: &str) -> Result<Self, &'static str> {
-      match str {
-          "Read" | "read" => Ok(Self::Read),
-          "Ei" | "ei" => Ok(Self::Ei),
-          "E" | "e" => Ok(Self::E),
-          "C" | "c" => Ok(Self::C),
-          "Set" | "set" => Ok(Self::Set),
-          "Ci" | "ci" => Ok(Self::Ci),
-          _ => Err("Invalid repr, expected ['Read', 'Ei', 'E', 'C', 'Set']"),
-      }
-  }
+    fn parse(str: &str) -> Result<Self, &'static str> {
+        match str {
+            "Read" | "read" => Ok(Self::Read),
+            "Ei" | "ei" => Ok(Self::Ei),
+            "E" | "e" => Ok(Self::E),
+            "C" | "c" => Ok(Self::C),
+            "Set" | "set" => Ok(Self::Set),
+            "Ci" | "ci" => Ok(Self::Ci),
+            _ => Err("Invalid repr, expected ['Read', 'Ei', 'E', 'C', 'Set']"),
+        }
+    }
 }
 
 macro_rules! args {
@@ -411,112 +411,127 @@ macro_rules! args {
     };
 }
 
-fn print_csrs(){
-  println!("marchid   0x{:016x}", csr::marchid());
-  println!("mhartid   0x{:016x}", csr::mhartid());
-  println!("mimpid    0x{:016x}", csr::mimpid());
-  {
+fn print_csrs() {
+    println!("marchid   0x{:016x}", csr::marchid());
+    println!("mhartid   0x{:016x}", csr::mhartid());
+    println!("mimpid    0x{:016x}", csr::mimpid());
     {
-      let misa = csr::misa();
-      println!("misa      0x{:016x}", misa);
-      let mut index = 0;
-      for v in 'A'..='Z'{
-        if (misa >> index) & 1 == 1{
-          println!("  {}", v);
+        {
+            let misa = csr::misa();
+            println!("misa      0x{:016x}", misa);
+            let mut index = 0;
+            for v in 'A'..='Z' {
+                if (misa >> index) & 1 == 1 {
+                    println!("  {}", v);
+                }
+                index += 1;
+            }
         }
-        index += 1;
-      }
     }
-  }
-  println!("mvendorid 0x{:016x}", csr::mvendorid());
-  {
-    let mie = csr::read_mie();
-    println!("mie       0x{:016x}", mie);
-    let values = [
-      ("0", 1),
-      ("ssie", 1),
-      ("0", 1),
-      ("msie", 1),
-      ("0", 1),
-      ("stie", 1),
-      ("0", 1),
-      ("mtie", 1),
-      ("0", 1),
-      ("seie", 1),
-      ("0", 1),
-      ("meie", 1),
-      ("0", 4),
-    ];
-    let mut index = 0;
-    for v in values{
-      println!("  {}: 0b{:0width$b}", v.0, (mie >> index) & ((1<<v.1) - 1), width = v.1);
-      index += v.1;
+    println!("mvendorid 0x{:016x}", csr::mvendorid());
+    {
+        let mie = csr::read_mie();
+        println!("mie       0x{:016x}", mie);
+        let values = [
+            ("0", 1),
+            ("ssie", 1),
+            ("0", 1),
+            ("msie", 1),
+            ("0", 1),
+            ("stie", 1),
+            ("0", 1),
+            ("mtie", 1),
+            ("0", 1),
+            ("seie", 1),
+            ("0", 1),
+            ("meie", 1),
+            ("0", 4),
+        ];
+        let mut index = 0;
+        for v in values {
+            println!(
+                "  {}: 0b{:0width$b}",
+                v.0,
+                (mie >> index) & ((1 << v.1) - 1),
+                width = v.1
+            );
+            index += v.1;
+        }
     }
-  }
 
-  println!("medeleg   0x{:016x}", csr::medeleg());
-  println!("mideleg   0x{:016x}", csr::mideleg());
-  {
-    let mip = csr::read_mip();
-    println!("mip       0x{:016x}", mip);
-    let values = [
-      ("0", 1),
-      ("ssip", 1),
-      ("0", 1),
-      ("msip", 1),
-      ("0", 1),
-      ("stip", 1),
-      ("0", 1),
-      ("mtip", 1),
-      ("0", 1),
-      ("seip", 1),
-      ("0", 1),
-      ("meip", 1),
-      ("0", 4),
-    ];
-    let mut index = 0;
-    for v in values{
-      println!("  {}: 0b{:0width$b}", v.0, (mip >> index) & ((1<<v.1) - 1), width = v.1);
-      index += v.1;
+    println!("medeleg   0x{:016x}", csr::medeleg());
+    println!("mideleg   0x{:016x}", csr::mideleg());
+    {
+        let mip = csr::read_mip();
+        println!("mip       0x{:016x}", mip);
+        let values = [
+            ("0", 1),
+            ("ssip", 1),
+            ("0", 1),
+            ("msip", 1),
+            ("0", 1),
+            ("stip", 1),
+            ("0", 1),
+            ("mtip", 1),
+            ("0", 1),
+            ("seip", 1),
+            ("0", 1),
+            ("meip", 1),
+            ("0", 4),
+        ];
+        let mut index = 0;
+        for v in values {
+            println!(
+                "  {}: 0b{:0width$b}",
+                v.0,
+                (mip >> index) & ((1 << v.1) - 1),
+                width = v.1
+            );
+            index += v.1;
+        }
     }
-  }
-  {
-    let mstatus = csr::read_mstatus();
-    println!("mstatus   0x{:016x}", mstatus);
-    let values = [
-      ("wpri", 1),
-      ("sie", 1),
-      ("wpri", 1),
-      ("mie", 1),
-      ("wpri", 1),
-      ("spie", 1),
-      ("ube", 1),
-      ("mpie", 1),
-      ("spp", 1),
-      ("vs", 2),
-      ("mpp", 2),
-      ("fs", 2),
-      ("xs", 2),
-      ("mprv", 1),
-      ("sum", 1),
-      ("mxr", 1),
-      ("tvm", 1),
-      ("tw", 1),
-      ("tsr", 1),
-      ("wpri", 9),
-      ("uxl", 2),
-      ("sxl", 2),
-      ("sbe", 1),
-      ("mbe", 1),
-      ("wpri", 25),
-      ("sd", 1),
-    ];
-    let mut index = 0;
-    for v in values{
-      println!("  {}: 0b{:0width$b}", v.0, (mstatus >> index) & ((1<<v.1) - 1), width = v.1);
-      index += v.1;
+    {
+        let mstatus = csr::read_mstatus();
+        println!("mstatus   0x{:016x}", mstatus);
+        let values = [
+            ("wpri", 1),
+            ("sie", 1),
+            ("wpri", 1),
+            ("mie", 1),
+            ("wpri", 1),
+            ("spie", 1),
+            ("ube", 1),
+            ("mpie", 1),
+            ("spp", 1),
+            ("vs", 2),
+            ("mpp", 2),
+            ("fs", 2),
+            ("xs", 2),
+            ("mprv", 1),
+            ("sum", 1),
+            ("mxr", 1),
+            ("tvm", 1),
+            ("tw", 1),
+            ("tsr", 1),
+            ("wpri", 9),
+            ("uxl", 2),
+            ("sxl", 2),
+            ("sbe", 1),
+            ("mbe", 1),
+            ("wpri", 25),
+            ("sd", 1),
+        ];
+        let mut index = 0;
+        for v in values {
+            println!(
+                "  {}: 0b{:0width$b}",
+                v.0,
+                (mstatus >> index) & ((1 << v.1) - 1),
+                width = v.1
+            );
+            index += v.1;
+        }
     }
-  }
 }
 
 const COMAMNDS: &[&'static dyn Command] = &[
@@ -557,9 +572,9 @@ const COMAMNDS: &[&'static dyn Command] = &[
       print_mem_u16(addr, count);
     }),
     cmd!("md.32", "(addr: usize, count: usize = 256) displays 'count' u32s starting at 'addr'", (self, args) -> {
-      args!(args, (addr: usize, count: usize = 256));
-      print_mem_u32(addr, count);
-  }),
+        args!(args, (addr: usize, count: usize = 256));
+        print_mem_u32(addr, count);
+    }),
     cmd!("start", "prints the starting address of this bootloader", (self, _args) -> {
         unsafe{
             let addr: u64;
@@ -724,71 +739,67 @@ const COMAMNDS: &[&'static dyn Command] = &[
     }),
 ];
 
-
 #[no_mangle]
 pub extern "C" fn bl_rust_main() {
- 
     timer::mdelay(250);
     unsafe {
         uart::console_init();
     }
     timer::mdelay(250);
     uart::print("\n\n\nBooted into firmware\nInitialized uart to 115200\n");
-    
-    unsafe{
-      if let Err(_) = security::efuse::lock_efuse(){
-        reset();
-      }else{
-        uart::print("Locked efuse\n");
-      }
+
+    unsafe {
+        if let Err(_) = security::efuse::lock_efuse() {
+            reset();
+        } else {
+            uart::print("Locked efuse\n");
+        }
     }
-    
-    
-    unsafe{
-      // set pinmux to enable output of LED pin
-      mmio_write_32!(0x03001074, 0x3);
-      gpio::set_gpio0_direction(29, gpio::Direction::Output);
+
+    unsafe {
+        // set pinmux to enable output of LED pin
+        mmio_write_32!(0x03001074, 0x3);
+        gpio::set_gpio0_direction(29, gpio::Direction::Output);
     }
     uart::print("Connfigured pinmux(LED pin 29)\n");
 
     uart::print("Enabling interrupts\n");
-    unsafe{
-      csr::enable_timer_interrupt();
-      csr::enable_interrupts();
-      // trigger an interrupt NOW
-      timer::set_timercmp(timer::get_mtimer());
+    unsafe {
+        csr::enable_timer_interrupt();
+        csr::enable_interrupts();
+        // trigger an interrupt NOW
+        timer::set_timercmp(timer::get_mtimer());
 
+        // plic is seen as a single external interrupt source
+        csr::enable_external_interrupt();
+        // all enabled interrupts allowed
+        plic::mint_threshhold(0);
 
-      // plic is seen as a single external interrupt source
-      csr::enable_external_interrupt();
-      // all enabled interrupts allowed
-      plic::mint_threshhold(0);
+        //--------------- timer 2 initialization ----------------------
+        // timer 0 interrupt number
+        plic::set_priority(79, 1);
+        plic::enable_m_interrupt(79);
 
+        // initialize timer0
+        timer::mm::set_mode(timer::mm::TIMER0, timer::mm::TimerMode::Count);
+        // quarter second
+        timer::mm::set_load_value(
+            timer::mm::TIMER0,
+            timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 4,
+        );
+        timer::mm::set_enabled(timer::mm::TIMER0, true);
+        //-------------------------------------
 
-      //--------------- timer 2 initialization ----------------------
-      // timer 0 interrupt number
-      plic::set_priority(79, 1);
-      plic::enable_m_interrupt(79);
+        //------------- timer 1 initialization ----------------------
+        plic::set_priority(80, 1);
+        plic::enable_m_interrupt(80);
 
-      // initialize timer0
-      timer::mm::set_mode(timer::mm::TIMER0, timer::mm::TimerMode::Count);
-      // quarter second
-      timer::mm::set_load_value(timer::mm::TIMER0, timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 4);
-      timer::mm::set_enabled(timer::mm::TIMER0, true);
-      //-------------------------------------
-
-
-      //------------- timer 1 initialization ----------------------
-      plic::set_priority(80, 1);
-      plic::enable_m_interrupt(80);
-
-
-      // initialize timer1
-      timer::mm::set_mode(timer::mm::TIMER1, timer::mm::TimerMode::Count);
-      // second
-      timer::mm::set_load_value(timer::mm::TIMER1, timer::SYS_COUNTER_FREQ_IN_SECOND as u32);
-      // timer::mm::set_enabled(timer::mm::TIMER1, true);
-      //-------------------------------------
+        // initialize timer1
+        timer::mm::set_mode(timer::mm::TIMER1, timer::mm::TimerMode::Count);
+        // second
+        timer::mm::set_load_value(timer::mm::TIMER1, timer::SYS_COUNTER_FREQ_IN_SECOND as u32);
+        // timer::mm::set_enabled(timer::mm::TIMER1, true);
+        //-------------------------------------
     }
     uart::print("Interrupts enabled\n");
 

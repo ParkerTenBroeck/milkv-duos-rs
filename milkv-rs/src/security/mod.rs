@@ -1,2 +1,2 @@
-pub mod efuse;
 pub mod cryptodma;
+pub mod efuse;

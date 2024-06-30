@@ -110,12 +110,11 @@ core::arch::global_asm!(
 
 #[no_mangle]
 pub extern "C" fn mtrap_handler(mcause: usize, mepc: usize, mtval: usize) {
-    
-    let sync = mcause & (1 << 63) == 0; 
+    let sync = mcause & (1 << 63) == 0;
     let code = mcause & !(1 << 63);
     if sync {
         let mepc = mepc - 1;
-        let desc = match code{
+        let desc = match code {
             0 => "Instruction address misaligned",
             1 => "Instruction access fault",
             2 => "Illegal instruction",
@@ -129,19 +128,20 @@ pub extern "C" fn mtrap_handler(mcause: usize, mepc: usize, mtval: usize) {
             11 => {
                 println!("\nEnv call from M-mode... returning");
                 return;
-            },
+            }
             12 => "Instruction page fault",
             13 => "Page fault on load",
             15 => "Page fault on store",
             _ => "Unknown exception",
         };
-        let ins = unsafe{ (mepc as *const u32).read() };
+        let ins = unsafe { (mepc as *const u32).read() };
         println!("\n\n\n{desc}:\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}, mtval: 0x{mtval:016x}, ins: 0x{ins:08x}\nCannot continue resetting\n\n");
         unsafe { milkv_rs::reset() }
-    }else{
-        match code{
-            0x7 => { //mtimer > mtimercmp
-                unsafe{
+    } else {
+        match code {
+            0x7 => {
+                //mtimer > mtimercmp
+                unsafe {
                     // 250 ms
                     timer::add_timercmp(timer::SYS_COUNTER_FREQ_IN_US * 250 * 1000);
                 }
@@ -149,12 +149,12 @@ pub extern "C" fn mtrap_handler(mcause: usize, mepc: usize, mtval: usize) {
             }
             0xb => {
                 let pending = unsafe { plic::mclaim_int() };
-                if pending != 0{
+                if pending != 0 {
                     plic_handler(mtval, pending);
-                    unsafe{
+                    unsafe {
                         plic::mint_complete(pending);
                     }
-                }else{
+                } else {
                     println!("\n\n\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}, mtval: 0x{mtval:016x}\nPlic Interrupt but no pending interrupt found? Cannot continue resetting\n\n");
                     unsafe { milkv_rs::reset() }
                 }
@@ -167,16 +167,16 @@ pub extern "C" fn mtrap_handler(mcause: usize, mepc: usize, mtval: usize) {
     }
 }
 
-fn plic_handler(mtval: usize, pending: u32){
-    match pending{
+fn plic_handler(mtval: usize, pending: u32) {
+    match pending {
         79 => unsafe {
             gpio::set_gpio0(29, !gpio::read_gpio0(29));
             timer::mm::clear_int(timer::mm::TIMER0);
-        }
+        },
         80 => unsafe {
             uart::print("\ntimer1\n");
             timer::mm::clear_int(timer::mm::TIMER1);
-        }
+        },
         _ => {
             println!("\n\n\nplic: 0x{pending:016x}, mtval: 0x{mtval:016x}\nUnknown plic interrupt value. Cannot continue resetting\n\n");
             unsafe { milkv_rs::reset() }

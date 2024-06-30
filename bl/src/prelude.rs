@@ -27,5 +27,4 @@ impl core::fmt::Write for Stdout {
     }
 }
 
-
 pub use milkv_rs::*;

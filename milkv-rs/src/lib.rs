@@ -1,17 +1,15 @@
 #![no_std]
 #![feature(asm_const)]
 
-
-pub mod timer;
-pub mod uart;
-pub mod security;
-pub mod pinmux;
-pub mod plic;
 pub mod csr;
 pub mod ddr;
 pub mod gpio;
 pub mod mmio;
-
+pub mod pinmux;
+pub mod plic;
+pub mod security;
+pub mod timer;
+pub mod uart;
 
 #[no_mangle]
 pub unsafe extern "C" fn reset() -> ! {

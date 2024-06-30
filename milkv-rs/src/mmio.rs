@@ -11,7 +11,6 @@ macro_rules! mmio_read_32 {
     };
 }
 
-
 /*
  * SoC memory map
  */
@@ -21,7 +20,6 @@ pub const SEC_FAB_FIREWALL: usize = SEC_SUBSYS_BASE + 0x00090000;
 pub const SEC_DDR_FIREWALL: usize = SEC_SUBSYS_BASE + 0x000A0000;
 pub const SEC_SYS_BASE: usize = SEC_SUBSYS_BASE + 0x000B0000;
 pub const SEC_EFUSE_BASE: usize = SEC_SUBSYS_BASE + 0x000C0000;
-
 
 pub const TOP_BASE: usize = 0x03000000;
 

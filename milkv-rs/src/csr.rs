@@ -15,9 +15,9 @@ pub const mrmr: u32 = 0x7C6;
 #[allow(non_upper_case_globals)]
 pub const mrvbr: u32 = 0x7C7;
 
-pub fn invalidate_d_cache(){
-    unsafe{
-        core::arch::asm!("   
+pub fn invalidate_d_cache() {
+    unsafe {
+        core::arch::asm!("
             li x3, 0x30013
             csrs {mcor}, x3
         ",
@@ -26,8 +26,8 @@ pub fn invalidate_d_cache(){
     }
 }
 
-pub fn misa() -> u32{
-    unsafe{
+pub fn misa() -> u32 {
+    unsafe {
         let misa;
         core::arch::asm!(
             "csrr {0}, misa",
@@ -37,8 +37,8 @@ pub fn misa() -> u32{
     }
 }
 
-pub fn mvendorid() -> u32{
-    unsafe{
+pub fn mvendorid() -> u32 {
+    unsafe {
         let mvendorid;
         core::arch::asm!(
             "csrr {0}, mvendorid",
@@ -48,8 +48,8 @@ pub fn mvendorid() -> u32{
     }
 }
 
-pub fn marchid() -> usize{
-    unsafe{
+pub fn marchid() -> usize {
+    unsafe {
         let marchid;
         core::arch::asm!(
             "csrr {0}, marchid",
@@ -59,8 +59,8 @@ pub fn marchid() -> usize{
     }
 }
 
-pub fn mimpid() -> usize{
-    unsafe{
+pub fn mimpid() -> usize {
+    unsafe {
         let mimpid;
         core::arch::asm!(
             "csrr {0}, mimpid",
@@ -70,8 +70,8 @@ pub fn mimpid() -> usize{
     }
 }
 
-pub fn mhartid() -> usize{
-    unsafe{
+pub fn mhartid() -> usize {
+    unsafe {
         let mhartid;
         core::arch::asm!(
             "csrr {0}, mhartid",
@@ -81,8 +81,8 @@ pub fn mhartid() -> usize{
     }
 }
 
-pub fn read_mstatus() -> usize{
-    unsafe{
+pub fn read_mstatus() -> usize {
+    unsafe {
         let val: usize;
         core::arch::asm!(
             "csrr {0}, mstatus",
@@ -92,8 +92,8 @@ pub fn read_mstatus() -> usize{
     }
 }
 
-pub fn read_mip() -> usize{
-    unsafe{
+pub fn read_mip() -> usize {
+    unsafe {
         let val: usize;
         core::arch::asm!(
             "csrr {0}, mip",
@@ -103,8 +103,8 @@ pub fn read_mip() -> usize{
     }
 }
 
-pub fn read_mie() -> usize{
-    unsafe{
+pub fn read_mie() -> usize {
+    unsafe {
         let val: usize;
         core::arch::asm!(
             "csrr {0}, mie",
@@ -114,65 +114,64 @@ pub fn read_mie() -> usize{
     }
 }
 
-
-pub unsafe fn enable_interrupts(){
+pub unsafe fn enable_interrupts() {
     core::arch::asm!(
         "csrs mstatus, {0}",
         in(reg) 0b1000,
     );
 }
 
-pub unsafe fn disable_interrupts(){
+pub unsafe fn disable_interrupts() {
     core::arch::asm!(
         "csrc mstatus, {0}",
         in(reg) 0b1000,
     );
 }
 
-pub unsafe fn set_mstatus(val: usize){
+pub unsafe fn set_mstatus(val: usize) {
     core::arch::asm!(
         "csrs mstatus, {0}",
         in(reg) val
     )
 }
 
-pub unsafe fn clear_mstatus(val: usize){
+pub unsafe fn clear_mstatus(val: usize) {
     core::arch::asm!(
         "csrc mstatus, {0}",
         in(reg) val
     )
 }
 
-pub unsafe fn set_mie(val: usize){
+pub unsafe fn set_mie(val: usize) {
     core::arch::asm!(
         "csrs mie, {0}",
         in(reg) val
     )
 }
 
-pub unsafe fn clear_mie(val: usize){
+pub unsafe fn clear_mie(val: usize) {
     core::arch::asm!(
         "csrc mie, {0}",
         in(reg) val
     )
 }
 
-pub unsafe fn enable_timer_interrupt(){
+pub unsafe fn enable_timer_interrupt() {
     core::arch::asm!(
         "csrs mie, {0}",
         in(reg) 0b10000000
     )
 }
 
-pub unsafe fn enable_external_interrupt()  {
+pub unsafe fn enable_external_interrupt() {
     core::arch::asm!(
         "csrs mie, {0}",
         in(reg) 0b100000000000
     )
 }
 
-pub fn medeleg() -> usize{
-    unsafe{
+pub fn medeleg() -> usize {
+    unsafe {
         let val: usize;
         core::arch::asm!(
             "csrr {0}, medeleg",
@@ -182,8 +181,8 @@ pub fn medeleg() -> usize{
     }
 }
 
-pub fn mideleg() -> usize{
-    unsafe{
+pub fn mideleg() -> usize {
+    unsafe {
         let val: usize;
         core::arch::asm!(
             "csrr {0}, mideleg",
@@ -192,4 +191,3 @@ pub fn mideleg() -> usize{
         val
     }
 }
-
