@@ -111,7 +111,7 @@ pub unsafe fn console_init() {
     dll.write_volatile(divisor & 0xff);
     dlh.write_volatile((divisor >> 8) & 0xff);
     lcr.write_volatile(lcr.read_volatile() & (!UART_LCR_DLAB));
-    ier.write_volatile(0);
+    ier.write_volatile(0b00000000);
     mcr.write_volatile(UART_MCRVAL);
     fcr.write_volatile(UART_FCR_DEFVAL);
     lcr.write_volatile(3);

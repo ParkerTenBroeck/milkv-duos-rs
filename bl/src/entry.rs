@@ -104,7 +104,6 @@ core::arch::global_asm!(
 
     j die
   
-  
     .balign 4
   die:
     ebreak
