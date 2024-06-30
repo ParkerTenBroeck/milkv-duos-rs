@@ -5,6 +5,7 @@ edition = "2021"
 
 
 [dependencies]
+milkv-rs = { path = "../milkv-rs" }
 
 [profile.release]
 panic = "abort"

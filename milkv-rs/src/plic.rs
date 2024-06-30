@@ -1,7 +1,5 @@
 use core::ptr::addr_of_mut;
 
-use crate::{print, println};
-
 
 pub const MAX_INT_ID: usize = 128;
 
@@ -124,9 +122,9 @@ pub unsafe fn set_priority(int: u32, pri: u32){
     addr_of_mut!((*PLIC).prio[int as usize]).write_volatile(pri);
 }
 
-pub unsafe fn disp(){
-    println!("m thresh: {}", addr_of_mut!((*PLIC).h0_mth).read_volatile());
-    println!("s thresh: {}", addr_of_mut!((*PLIC).h0_sth).read_volatile());
+pub unsafe fn disp(mut out: impl core::fmt::Write){
+    writeln!(out, "m thresh: {}", addr_of_mut!((*PLIC).h0_mth).read_volatile()).unwrap();
+    writeln!(out, "s thresh: {}", addr_of_mut!((*PLIC).h0_sth).read_volatile()).unwrap();
     for i in 1..MAX_INT_ID{
         let menabled = (addr_of_mut!((*PLIC).h0_mie[(i as usize)/32]).read_volatile() & 1<<(i%32)) != 0;
         let senabled = (addr_of_mut!((*PLIC).h0_sie[(i as usize)/32]).read_volatile() & 1<<(i%32)) != 0;
@@ -134,22 +132,22 @@ pub unsafe fn disp(){
 
 
         if menabled | senabled | pending{
-            print!("int: {i} ");
+            write!(out, "int: {i} ").unwrap();
         }
         if menabled{
-            print!("menabled ")
+            write!(out, "menabled ").unwrap()
         }
         if senabled{
-            print!("senabled ")
+            write!(out, "senabled ").unwrap()
         }
         if menabled | senabled{
-            print!("priority({}) ", addr_of_mut!((*PLIC).prio[i as usize]).read_volatile())
+            write!(out, "priority({}) ", addr_of_mut!((*PLIC).prio[i as usize]).read_volatile()).unwrap()
         }
         if pending{
-            print!("pending")
+            write!(out, "pending").unwrap()
         }
         if menabled | senabled | pending{
-            println!()
+            writeln!(out).unwrap()
         }
     }
 }

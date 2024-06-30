@@ -1,4 +1,6 @@
-use crate::{csr_reg, gpio, panic::reset, plic, println, timer, uart};
+use milkv_rs::{gpio, plic, timer, uart};
+
+use crate::println;
 
 core::arch::global_asm!(
     r#"
@@ -135,7 +137,7 @@ pub extern "C" fn mtrap_handler(mcause: usize, mepc: usize, mtval: usize) {
         };
         let ins = unsafe{ (mepc as *const u32).read() };
         println!("\n\n\n{desc}:\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}, mtval: 0x{mtval:016x}, ins: 0x{ins:08x}\nCannot continue resetting\n\n");
-        unsafe { reset() }
+        unsafe { milkv_rs::reset() }
     }else{
         match code{
             0x7 => { //mtimer > mtimercmp
@@ -154,12 +156,12 @@ pub extern "C" fn mtrap_handler(mcause: usize, mepc: usize, mtval: usize) {
                     }
                 }else{
                     println!("\n\n\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}, mtval: 0x{mtval:016x}\nPlic Interrupt but no pending interrupt found? Cannot continue resetting\n\n");
-                    unsafe { reset() }
+                    unsafe { milkv_rs::reset() }
                 }
             }
             _ => {
                 println!("\n\n\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}, mtval: 0x{mtval:016x}\nCannot continue resetting\n\n");
-                unsafe { reset() }
+                unsafe { milkv_rs::reset() }
             }
         }
     }
@@ -177,7 +179,7 @@ fn plic_handler(mtval: usize, pending: u32){
         }
         _ => {
             println!("\n\n\nplic: 0x{pending:016x}, mtval: 0x{mtval:016x}\nUnknown plic interrupt value. Cannot continue resetting\n\n");
-            unsafe { reset() }
+            unsafe { milkv_rs::reset() }
         }
     }
 }

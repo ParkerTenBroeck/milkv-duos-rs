@@ -22,7 +22,10 @@ pub struct Stdout;
 
 impl core::fmt::Write for Stdout {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        crate::uart::print(s);
+        milkv_rs::uart::print(s);
         Ok(())
     }
 }
+
+
+pub use milkv_rs::*;

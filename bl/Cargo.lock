@@ -5,3 +5,10 @@ version = 3
 [[package]]
 name = "bl"
 version = "0.1.0"
+dependencies = [
+ "milkv-rs",
+]
+
+[[package]]
+name = "milkv-rs"
+version = "0.1.0"

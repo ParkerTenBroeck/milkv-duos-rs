@@ -1,24 +1,12 @@
 #![no_std]
 #![no_main]
 #![feature(asm_const)]
-#![allow(internal_features)]
-#![feature(core_intrinsics)]
 
-pub mod csr_reg;
-pub mod ddr;
 pub mod entry;
-pub mod gpio;
-pub mod mmio;
 pub mod panic;
 pub mod prelude;
-pub mod timer;
-pub mod uart;
-pub mod efuse;
-pub mod pinmux;
-pub mod plic;
 pub mod interrupt_vector;
 
-use panic::reset;
 pub use prelude::*;
 
 pub fn print_mem_u8(addr_area: usize, size: usize) {
@@ -423,13 +411,13 @@ macro_rules! args {
     };
 }
 
-fn print_csr_regs(){
-  println!("marchid   0x{:016x}", csr_reg::marchid());
-  println!("mhartid   0x{:016x}", csr_reg::mhartid());
-  println!("mimpid    0x{:016x}", csr_reg::mimpid());
+fn print_csrs(){
+  println!("marchid   0x{:016x}", csr::marchid());
+  println!("mhartid   0x{:016x}", csr::mhartid());
+  println!("mimpid    0x{:016x}", csr::mimpid());
   {
     {
-      let misa = csr_reg::misa();
+      let misa = csr::misa();
       println!("misa      0x{:016x}", misa);
       let mut index = 0;
       for v in 'A'..='Z'{
@@ -440,9 +428,9 @@ fn print_csr_regs(){
       }
     }
   }
-  println!("mvendorid 0x{:016x}", csr_reg::mvendorid());
+  println!("mvendorid 0x{:016x}", csr::mvendorid());
   {
-    let mie = csr_reg::read_mie();
+    let mie = csr::read_mie();
     println!("mie       0x{:016x}", mie);
     let values = [
       ("0", 1),
@@ -466,10 +454,10 @@ fn print_csr_regs(){
     }
   }
 
-  println!("medeleg   0x{:016x}", csr_reg::medeleg());
-  println!("mideleg   0x{:016x}", csr_reg::mideleg());
+  println!("medeleg   0x{:016x}", csr::medeleg());
+  println!("mideleg   0x{:016x}", csr::mideleg());
   {
-    let mip = csr_reg::read_mip();
+    let mip = csr::read_mip();
     println!("mip       0x{:016x}", mip);
     let values = [
       ("0", 1),
@@ -493,7 +481,7 @@ fn print_csr_regs(){
     }
   }
   {
-    let mstatus = csr_reg::read_mstatus();
+    let mstatus = csr::read_mstatus();
     println!("mstatus   0x{:016x}", mstatus);
     let values = [
       ("wpri", 1),
@@ -631,7 +619,7 @@ const COMAMNDS: &[&'static dyn Command] = &[
       }
     }),
     cmd!("invcache", "", (self, _args) -> {
-      csr_reg::invalidate_d_cache()
+      csr::invalidate_d_cache()
     }),
     cmd!("mtimer", "reads mtime/mtimecmp", (self, _args) -> {
       println!("mtimer:    0x{:016x}", timer::get_mtimer());
@@ -691,35 +679,35 @@ const COMAMNDS: &[&'static dyn Command] = &[
       }
     }),
     cmd!("csrs", "", (self, _args) -> {
-      print_csr_regs();
+      print_csrs();
     }),
     cmd!("mstatuss", "(val: usize)", (self, args) -> {
       args!(args, (val: usize));
       unsafe{
-        csr_reg::set_mstatus(val);
+        csr::set_mstatus(val);
       }
     }),
     cmd!("mstatusc", "(val: usize)", (self, args) -> {
       args!(args, (val: usize));
       unsafe{
-        csr_reg::clear_mstatus(val);
+        csr::clear_mstatus(val);
       }
     }),
     cmd!("mies", "(val: usize)", (self, args) -> {
       args!(args, (val: usize));
       unsafe{
-        csr_reg::set_mie(val);
+        csr::set_mie(val);
       }
     }),
     cmd!("miec", "(val: usize)", (self, args) -> {
       args!(args, (val: usize));
       unsafe{
-        csr_reg::clear_mie(val);
+        csr::clear_mie(val);
       }
     }),
     cmd!("plicd", "", (self, _args) -> {
       unsafe{
-        plic::disp();
+        plic::disp(prelude::Stdout);
       }
     }),
     cmd!("plics", "(int: u32, pri: u32)", (self, args) -> {
@@ -746,6 +734,16 @@ pub extern "C" fn bl_rust_main() {
     }
     timer::mdelay(250);
     uart::print("\n\n\nBooted into firmware\nInitialized uart to 115200\n");
+    
+    unsafe{
+      if let Err(_) = security::efuse::lock_efuse(){
+        reset();
+      }else{
+        uart::print("Locked efuse\n");
+      }
+    }
+    
+    
     unsafe{
       // set pinmux to enable output of LED pin
       mmio_write_32!(0x03001074, 0x3);
@@ -755,14 +753,14 @@ pub extern "C" fn bl_rust_main() {
 
     uart::print("Enabling interrupts\n");
     unsafe{
-      csr_reg::enable_timer_interrupt();
-      csr_reg::enable_interrupts();
+      csr::enable_timer_interrupt();
+      csr::enable_interrupts();
       // trigger an interrupt NOW
-      timer::set_timercmp(0);
+      timer::set_timercmp(timer::get_mtimer());
 
 
       // plic is seen as a single external interrupt source
-      csr_reg::enable_external_interrupt();
+      csr::enable_external_interrupt();
       // all enabled interrupts allowed
       plic::mint_threshhold(0);
 
@@ -774,7 +772,7 @@ pub extern "C" fn bl_rust_main() {
 
       // initialize timer0
       timer::mm::set_mode(timer::mm::TIMER0, timer::mm::TimerMode::Count);
-      // half second
+      // quarter second
       timer::mm::set_load_value(timer::mm::TIMER0, timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 4);
       timer::mm::set_enabled(timer::mm::TIMER0, true);
       //-------------------------------------

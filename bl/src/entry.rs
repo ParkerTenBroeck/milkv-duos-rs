@@ -1,4 +1,4 @@
-use crate::csr_reg::*;
+use milkv_rs::csr::*;
 
 core::arch::global_asm!(
     r#"
