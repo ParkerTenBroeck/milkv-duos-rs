@@ -48,46 +48,32 @@ core::arch::global_asm!(
     csrw mtvec, t0
     // csrw stvec, t0
   
-    # set mxstatus to init value
+    # set {mxstatus} to init value
     li x3, 0xc0638000
     csrw {mxstatus}, x3
   
-    // invalidate all memory for BTB,BHT,DCACHE,ICACHE
-    li x3, 0x30013
-    csrs {mcor}, x3
-    
-    // enable ICACHE,DCACHE,BHT,BTB,RAS,WA
-    #li x3, 0x7f
-    #csrs {mhcr}, x3
+    # set plic_ctrl = 1
+    li x3, 0x701FFFFC # plic_base + 0x1FFFFC
+    li x4, 1
+    sw x4 , 0(x3)
   
     # invalid I-cache
     li x3, 0x33
     csrc {mcor}, x3
     li x3, 0x11
     csrs {mcor}, x3
-
     # enable I-cache
-    #li x3, 0x1
-    #csrs {mhcr}, x3
-    
+    li x3, 0x1
+    csrs {mhcr}, x3
     # invalid D-cache
     li x3, 0x33
     csrc {mcor}, x3
     li x3, 0x12
     csrs {mcor}, x3
-
     # enable D-cache
-    #li x3, 0x2
-    #csrs {mhcr}, x3
-  
-    // enable data_cache_prefetch, amr
-    #li x3, 0x610c
-    #csrs {mhint}, x3 #mhint
-  
-    # enable fp
-    li x3, 0x1 << 13
-    csrs mstatus, x3
-  
+    li x3, 0x2
+    csrs {mhcr}, x3
+
     la sp, __STACKS_END__
   
     la a3, __BSS_START__
@@ -113,5 +99,5 @@ core::arch::global_asm!(
     mxstatus = const mxstatus,
     mcor = const mcor,
     mhcr = const mhcr,
-    mhint = const mhint,
+    // mhint = const mhint,
 );

@@ -1,0 +1,2 @@
+#define ERROR(...)
+#define NOTICE(...)

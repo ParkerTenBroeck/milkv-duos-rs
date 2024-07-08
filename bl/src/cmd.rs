@@ -591,17 +591,17 @@ const COMAMNDS: &[&'static dyn Command] = &[
     cmd!("gpio", "(kind: [Toggle, Set, Get], pin: u8, value: bool = false) modifies gpio", (self, args) -> {
       args!(args, (kind: GpioKind, pin: u8, value: bool = false));
       match kind{
-          GpioKind::Toggle => {
-            gpio::set_gpio0_direction(pin, gpio::Direction::Output);
-            gpio::set_gpio0(pin, !gpio::read_gpio0(pin));
+          GpioKind::Toggle => unsafe {
+            gpio::set_gpio_direction(mmio::GPIO0, pin, gpio::Direction::Output);
+            gpio::set_gpio(mmio::GPIO0, pin, !gpio::read_gpio(mmio::GPIO0, pin));
           },
-          GpioKind::Set => {
-            gpio::set_gpio0_direction(pin, gpio::Direction::Output);
-            gpio::set_gpio0(pin, value);
+          GpioKind::Set => unsafe {
+            gpio::set_gpio_direction(mmio::GPIO0, pin, gpio::Direction::Output);
+            gpio::set_gpio(mmio::GPIO0, pin, value);
           },
-          GpioKind::Get => {
-            gpio::set_gpio0_direction(pin, gpio::Direction::Input);
-            println!("gpio pin {} is {}", pin, if gpio::read_gpio0(pin) { "High" } else { "Low" } );
+          GpioKind::Get => unsafe {
+            gpio::set_gpio_direction(mmio::GPIO0, pin, gpio::Direction::Input);
+            println!("gpio pin {} is {}", pin, if gpio::read_gpio(mmio::GPIO0, pin) { "High" } else { "Low" } );
           },
       }
     }),

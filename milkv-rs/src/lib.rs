@@ -1,5 +1,7 @@
 #![no_std]
 #![feature(asm_const)]
+#![feature(c_size_t)]
+#![allow(clippy::missing_safety_doc)]
 
 pub mod csr;
 pub mod ddr;
@@ -13,6 +15,10 @@ pub mod uart;
 pub mod system;
 pub mod watchdog;
 pub mod interrupt;
+pub mod rom_api;
+pub mod platform;
+pub mod rtc;
+pub mod mmap;
 
 #[no_mangle]
 pub unsafe extern "C" fn reset() -> ! {

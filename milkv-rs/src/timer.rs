@@ -1,6 +1,12 @@
 pub const TOP_BASE: u32 = 0x03000000;
 pub const REG_GP_REG2: u32 = TOP_BASE + 0x88;
 
+pub fn odelay(clk: u64){
+    let start = get_mtimer();
+    let delta_d = clk;
+    while get_mtimer().wrapping_sub(start) < delta_d {}
+}
+
 pub fn udelay(usec: u64) {
     let start = get_mtimer();
     let delta_d = usec * SYS_COUNTER_FREQ_IN_US;
