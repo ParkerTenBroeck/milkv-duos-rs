@@ -1,11 +1,11 @@
 [package]
-name = "bl"
+name = "os"
 version = "0.1.0"
 edition = "2021"
 
 
 [dependencies]
-milkv-rs = { path = "../milkv-rs", features = ["ddr"]}
+milkv-rs = { path = "../milkv-rs" }
 
 [profile.release]
 panic = "abort"

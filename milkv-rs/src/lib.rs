@@ -4,6 +4,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 pub mod csr;
+#[cfg(feature = "ddr")]
 pub mod ddr;
 pub mod gpio;
 pub mod mmio;

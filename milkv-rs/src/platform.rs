@@ -152,7 +152,7 @@ pub struct fip_param1 {
     pub bl2_img_size: u32,
     pub bld_img_size: u32,
     pub param2_loadaddr: u32,
-    pub reserved1: u32,
+    pub param2_size: u32,
     pub chip_conf: [chip_conf; 95],
     pub bl_ek: [u8; 32],
     pub root_pk: [u8; 512],

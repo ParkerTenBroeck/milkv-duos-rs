@@ -2,12 +2,12 @@ use milkv_rs::csr::*;
 
 core::arch::global_asm!(
     r#"
-    .globl  bl_entrypoint
+    .globl  _os_start
 
     .option norvc
     .section .text.entry,"ax",@progbits
-    .globl bl_entrypoint
-  bl_entrypoint:
+    .globl _os_start
+    _os_start:
 
     li x1, 0
     li x2, 0
@@ -65,7 +65,6 @@ core::arch::global_asm!(
     # enable I-cache
     li x3, 0x1
     csrs {mhcr}, x3
-    
     # invalid D-cache
     li x3, 0x33
     csrc {mcor}, x3
@@ -87,7 +86,7 @@ core::arch::global_asm!(
     addi a4, a4, -8
     bnez a4, bss_clear
   
-    call bl_rust_main
+    call os_main
 
     j die
   

@@ -3,7 +3,7 @@
 
 use crate::{
     // ddr::{AxiCtrl, AxiMons, Ddrc}, 
-    gpio::GPIO, plic::Plic, system::SystemControl, timer::mm::{Timer, Timers}, uart::Uart, watchdog::WatchDog};
+    gpio::GPIO, mmap::PARAM1_BASE, platform::fip_param1, plic::Plic, system::SystemControl, timer::mm::{Timer, Timers}, uart::Uart, watchdog::WatchDog};
 
 #[macro_export]
 macro_rules! mmio_write_32 {
@@ -71,7 +71,7 @@ pub const UART3: *mut Uart = 0x04170000 as *mut Uart;
 pub const UART4: *mut Uart = 0x041C0000 as *mut Uart;
 pub const RTCSYS_UART: *mut Uart = 0x05022000 as *mut Uart;
 
-
+pub const PARAM1: *const fip_param1 = PARAM1_BASE as *const fip_param1;
 
 
 

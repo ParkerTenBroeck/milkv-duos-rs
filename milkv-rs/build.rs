@@ -1,5 +1,6 @@
 fn main(){
 
+    #[cfg(feature = "ddr")]
     cc::Build::new()
         .compiler("riscv64-none-elf-gcc")
         .file("c/src/ddr.c")
@@ -21,7 +22,7 @@ fn main(){
         .define("REAL_DDRPHY", None)
         .define("uint", "unsigned int")
         .define("__packed", "__attribute__((packed))")
+
+        .flag("-Os")
         .compile("ddr");
-
-
 }

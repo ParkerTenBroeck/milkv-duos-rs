@@ -1,3 +1,5 @@
+use csr::disable_interrupts;
+use csr::enable_interrupts;
 
 pub use crate::prelude::*;
 use crate::print;
@@ -109,8 +111,7 @@ fn user_in(buffer: &mut [u8]) -> &str {
     let mut len = 0;
     let mut pos = 0;
 
-    'outer:
-    loop {
+    'outer: loop {
         {
             uart::print("\x1b[2K\x1b[0G");
             let start_msg = "milkv :>";
@@ -120,8 +121,7 @@ fn user_in(buffer: &mut [u8]) -> &str {
             }
             print!("\x1b[0G\x1b[{}C", pos + start_msg.len());
         }
-        'inner:
-        while {
+        'inner: while {
             match uart::get_b() {
                 0x1b => {
                     if uart::get_b() == 0x5b {
@@ -151,7 +151,7 @@ fn user_in(buffer: &mut [u8]) -> &str {
                 13 => break 'outer,
                 0x08 => {
                     if len > 0 && pos > 0 {
-                        for i in (pos-1)..(len-1) {
+                        for i in (pos - 1)..(len - 1) {
                             buffer[i] = buffer[i + 1];
                         }
                         pos -= 1;
@@ -170,10 +170,10 @@ fn user_in(buffer: &mut [u8]) -> &str {
                         uart::print_b(reg);
                     }
                 }
-                _ => panic!("invalid char")
+                _ => panic!("invalid char"),
             }
             uart::has_b()
-        }{}
+        } {}
     }
     uart::print_c(b'\n');
 
@@ -737,9 +737,34 @@ const COMAMNDS: &[&'static dyn Command] = &[
         }
       }
     }),
+    cmd!("perf", "", (self, _args) -> {
+      extern "C"{
+          #[link_name = "magic_perf"]
+          fn magic_perf() -> (usize, usize);
+      }
+      println!("lol: {:?}", unsafe{magic_perf()});
+    }),
+    cmd!("perf2", "", (self, _args) -> {
+      #[inline(never)]
+      extern "C" fn magic_perf() -> (usize, usize) {
+          let rstart = timer::get_mtimer();
+          let mut val = 0;
+          unsafe{ csr::disable_interrupts(); }
+          let start = timer::get_mtimer();
+          while start == timer::get_mtimer() {
+              val += 1;
+          }
+          unsafe{ csr::enable_interrupts(); }
+          let t = timer::get_mtimer().wrapping_sub(rstart) as usize;
+          // uart::print("magic string :3\n");
+          (val, t)
+      }
+
+      println!("lol: {:?}", magic_perf());
+    }),
 ];
 
-pub fn run(){
+pub fn run() {
     let mut buffer = [0; 512];
     'next_cmd: loop {
         let msg = user_in(&mut buffer);

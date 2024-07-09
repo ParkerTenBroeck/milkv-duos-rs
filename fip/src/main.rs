@@ -50,6 +50,7 @@ fn align_vec(v: &mut Vec<u8>){
 #[derive(Default)]
 struct Options{
     bl: Option<PathBuf>,
+    s2: Option<PathBuf>,
     out: Option<PathBuf>,
 }
 
@@ -58,6 +59,7 @@ fn help(){
 minimal fip.bin maker for MilkV-Duos
 
     -bl <path> 
+    -s2 <path> 
     -o <path> (default 'fip.bin')
     -help Print this message
 
@@ -74,6 +76,12 @@ fn main() -> std::io::Result<()>{
         match next.as_str().trim(){
             "-bl" => if let Some(p) = args.next(){
                 options.bl = Some(p.into())
+            }else{
+                println!("Expected path found nothing. type -help for help");
+                std::process::exit(-1);
+            }
+            "-s2" => if let Some(p) = args.next(){
+                options.s2 = Some(p.into())
             }else{
                 println!("Expected path found nothing. type -help for help");
                 std::process::exit(-1);
@@ -105,8 +113,14 @@ fn main() -> std::io::Result<()>{
     }else{
         Vec::new()
     };
+    let mut s2 = if let Some(p) = &options.s2{
+        std::fs::read(p)?
+    }else{
+        Vec::new()
+    };
 
     align_vec(&mut bl_img);
+    align_vec(&mut s2);
     
     let mut file = Vec::new();
 
@@ -155,8 +169,8 @@ fn main() -> std::io::Result<()>{
 
     // param 2 loadaddr
     file.write_all(&U32Le::new(0).0)?;
-    // reserved
-    file.write_all(&U32Le::new(0).0)?;
+    // param 2 loadaddr
+    file.write_all(&U32Le::new(s2.len() as u32).0)?;
 
     file.write_all(&[0; 760])?;
 
@@ -178,6 +192,8 @@ fn main() -> std::io::Result<()>{
     checksums[1].start = file.len();
     file.write_all(&bl_img)?;
     checksums[1].end = file.len();
+
+    file.write_all(&s2)?;
 
     for cksum in checksums.iter().rev(){
         if cksum.loc == 0{

@@ -1,6 +1,8 @@
 {
     "nixEnvSelector.nixFile": "${workspaceFolder}/default.nix",
     "files.associations": {
-        "ddr_sys.h": "c"
+        "ddr_sys.h": "c",
+        "ddr_pkg_info.h": "c",
+        "bitwise_ops.h": "c"
     }
 }
