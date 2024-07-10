@@ -368,4 +368,18 @@ unsafe fn init_vga(){
         Alignment::Center,
     )
     .draw(display).unwrap();
+
+    for i in 0..256{
+        let c = i as u8 as char;
+        let mut tmp = [0u8; 4];
+        let s = c.encode_utf8(&mut tmp);
+        Text::with_alignment(
+            s,
+            Point::new((i%64)*5, 15 + 7 + (i/64) * 7) 
+            + display.bounding_box().center().y_axis(),
+            character_style,
+            Alignment::Left,
+        )
+        .draw(display).unwrap();
+    }
 }
