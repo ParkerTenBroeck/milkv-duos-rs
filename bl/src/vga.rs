@@ -84,7 +84,7 @@ pub unsafe fn vga2() -> ! {
                 }
             } 
             
-            while (bp-1) > timer::get_mtimer() {}
+            while bp > timer::get_mtimer() {}
         }
         
         let fp = start + per_line(const { LINES_VIS + V_FRONT_PORCH });
