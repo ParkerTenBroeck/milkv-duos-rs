@@ -665,10 +665,6 @@ pub unsafe fn init_pll_speed() {
     // set rtcsys clock to PLL (FPLL) div by 5  = 300MHz
     mmio_write_32!(0x0300212C, 0x00050009); // CLK_SRC_RTC_SYS_0
 
-    unsafe fn mmio_clrbits_32(addr: u32, clear: u32) {
-        mmio_write_32!(addr, mmio_read_32!(addr) & !clear);
-    }
-
     // disable powerdown, mipimpll_d3_pd[2] = 0
     mmio_clrbits_32(0x030028A0, 0x4);
 
@@ -690,4 +686,24 @@ pub unsafe fn init_pll_speed() {
 
     let div_clk_axi6 = (0x03002000 + 0x0bc) as *mut u32;
     div_clk_axi6.write_volatile((1 << 3) | 0x40000 | (1));
+}
+
+unsafe fn mmio_clrbits_32(addr: u32, clear: u32) {
+    mmio_write_32!(addr, mmio_read_32!(addr) & !clear);
+}
+
+unsafe fn mmio_setbits_32(addr: u32, set: u32) {
+    mmio_write_32!(addr, mmio_read_32!(addr) | set);
+}
+
+pub unsafe fn reset_c906l(reset_address: usize){
+	// NOTICE("RSC.\n");
+
+	mmio_clrbits_32(0x3003024, 1 << 6);
+
+	mmio_setbits_32(SEC_SYS_BASE + 0x04, 1 << 13);
+	mmio_write_32!(SEC_SYS_BASE + 0x20, reset_address as u32);
+	mmio_write_32!(SEC_SYS_BASE + 0x24, (reset_address >> 32) as u32);
+
+	mmio_setbits_32(0x3003024, 1 << 6);
 }

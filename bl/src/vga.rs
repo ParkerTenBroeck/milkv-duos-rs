@@ -46,6 +46,30 @@ pub unsafe fn vga2() -> ! {
     let gpio_dr = core::ptr::addr_of_mut!((*mmio::GPIO1).dr);
 
     unsafe { disable_interrupts() }
+    // core::arch::asm!(
+    //     "
+    //     # invalid I-cache
+    //     li x3, 0x33
+    //     csrc {mcor}, x3
+    //     li x3, 0x11
+    //     csrs {mcor}, x3
+    //     # enable I-cache
+    //     li x3, 0x1
+    //     csrs {mhcr}, x3
+        
+    //     # invalid D-cache
+    //     li x3, 0x33
+    //     csrc {mcor}, x3
+    //     li x3, 0x12
+    //     csrs {mcor}, x3
+    //     # enable D-cache
+    //     li x3, 0x2
+    //     csrs {mhcr}, x3
+    //     ",
+    //     mcor = const csr::mcor,
+    //     mhcr = const csr::mhcr,
+    // );
+
     loop {
         let start = timer::get_mtimer();
         
@@ -59,6 +83,9 @@ pub unsafe fn vga2() -> ! {
                     //hack
                     + if p < PIX_VIS/PIXEL_SCALE*99/100 {1} else {0}
                     ;
+                if (pend +1) < timer::get_mtimer(){
+                    continue;
+                }
 
                 let pval = ((addr+p) as *mut u8).read_volatile() as u32;
                 let pval = pval << 1 | const { H_SYNC_PL | V_SYNC_PL };
@@ -86,6 +113,7 @@ pub unsafe fn vga2() -> ! {
             
             while bp > timer::get_mtimer() {}
         }
+        
         
         let fp = start + per_line(const { LINES_VIS + V_FRONT_PORCH });
         {
@@ -126,6 +154,7 @@ pub unsafe fn vga2() -> ! {
         let bp =
             start + per_line(const { LINES_VIS + V_FRONT_PORCH + V_SYNC_PULSE + V_BACK_PORCH });
         
+
         { // scan line 0 (vis) data prefetch
             let mut addr = 0x80000000;
             for addr in (addr..(addr + PIX_VIS/PIXEL_SCALE)).step_by(4*8*2){

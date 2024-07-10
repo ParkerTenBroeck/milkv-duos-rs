@@ -6,7 +6,7 @@
     "data-layout": "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128",
     "eh-frame-header": false,
     "emit-debug-gdb-scripts": false,
-    "features": "+i,+m,+a,+f,+d,+c,+h,+zicsr",
+    "features": "+i,+m,+a,+f,+d,+c,+h,+zicsr,+xtheadsync,+xtheadcmo",
     "is-builtin": false,
     "linker": "rust-lld",
     "linker-flavor": "gnu-lld",

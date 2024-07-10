@@ -9,6 +9,7 @@ pub mod panic;
 pub mod prelude;
 pub mod vga;
 
+use embedded_graphics::text::renderer::CharacterStyle;
 use platform::fip_param1;
 pub use prelude::*;
 
@@ -224,6 +225,33 @@ pub extern "C" fn bl_rust_main() {
     }
     uart::print("\n");
 
+
+    // unsafe{
+    //     core::arch::asm!(
+    //         "
+    //         # invalid I-cache
+    //         li x3, 0x33
+    //         csrc {mcor}, x3
+    //         li x3, 0x11
+    //         csrs {mcor}, x3
+    //         # enable I-cache
+    //         li x3, 0x1
+    //         csrc {mhcr}, x3
+            
+    //         # invalid D-cache
+    //         li x3, 0x33
+    //         csrc {mcor}, x3
+    //         li x3, 0x12
+    //         csrs {mcor}, x3
+    //         # enable D-cache
+    //         li x3, 0x2
+    //         csrc {mhcr}, x3
+    //         ",
+    //         mcor = const csr::mcor,
+    //         mhcr = const csr::mhcr,
+    //     );
+    // }
+
     uart::print("Speeding up pll\n");
     unsafe {
         milkv_rs::platform::init_pll_speed();
@@ -234,13 +262,131 @@ pub extern "C" fn bl_rust_main() {
     unsafe{
         init_vga();
     }
+    unsafe{
+        core::arch::asm!("
+            th.sync
+            th.dcache.call
+        ");
+    }
+    uart::print("Testing second core\n");
+    unsafe {
+        test_second_core()
+    }
+
+    // uart::print("Starting VGA\n");
+    // unsafe { vga::vga2() }
+    uart::print("Starting console\n");
+
+    // cmd::run();
+    let mut i = 0;
+    loop{
+        i += 1;
+        println!("nyaa: {i}");
+        timer::mdelay(16);
+
+
+        use embedded_graphics::{
+            mono_font::MonoTextStyle,
+            prelude::*,
+            text::{Alignment, Text},
+        };
+        use embedded_graphics::mono_font::*;
+        let display = unsafe { &mut *FRAME_BUF };
+
+        let mut character_style = MonoTextStyle::new(&ascii::FONT_5X7, Color::White);
+        character_style.set_background_color(Option::Some(Color::Black));
+
+        let mut buff = [0u8; 256];
+        struct Buff<'a>(&'a mut[u8], usize);
+        impl<'a> core::fmt::Write for Buff<'a>{
+            fn write_str(&mut self, s: &str) -> core::fmt::Result {
+                self.0[self.1..(self.1+s.len())].copy_from_slice(s.as_bytes());
+                self.1 += s.len();
+                Ok(())
+            }
+        }
+        use core::fmt::Write;
+        let mut buff = Buff(&mut buff, 0);
+        _ = write!(buff, "{i}");
+        Text::with_alignment(
+            unsafe{core::str::from_utf8_unchecked(&buff.0[0..buff.1])},
+            display.bounding_box().center() + Point::new(0, 0),
+            character_style,
+            Alignment::Left,
+        )
+        .draw(display).unwrap();
+
+        unsafe{
+            for i in (0..(WIDTH * HEIGHT)).step_by(64){
+                core::arch::asm!("
+                    th.dcache.cpa {0}
+                ",
+                in(reg) 0x80000000usize + i);
+            }
+        }
+    }
+}
+
+#[no_mangle]
+static mut STACK: [u64; 256*4] = [0; 256*4];
+
+core::arch::global_asm!(
+    "
+    second_core_start:
+    # set {mxstatus} to init value
+    li x3, 0xc0638000
+    csrw {mxstatus}, x3
+  
+    # set plic_ctrl = 1
+    #li x3, 0x701FFFFC # plic_base + 0x1FFFFC
+    #li x4, 1
+    #sw x4 , 0(x3)
+  
+    # invalid I-cache
+    li x3, 0x33
+    csrc {mcor}, x3
+    li x3, 0x11
+    csrs {mcor}, x3
+    # enable I-cache
+    li x3, 0x1
+    csrs {mhcr}, x3
+    
+    # invalid D-cache
+    li x3, 0x33
+    csrc {mcor}, x3
+    li x3, 0x12
+    csrs {mcor}, x3
+    # enable D-cache
+    li x3, 0x2
+    csrs {mhcr}, x3
+
+    la sp, STACK - 8192
+    jal second_core_main
+    ",
+
+    mxstatus = const csr::mxstatus,
+    mcor = const csr::mcor,
+    mhcr = const csr::mhcr,
+    // mhint = const mhint,
+);
+
+#[no_mangle]
+extern "C" fn second_core_main() -> !{
+    timer::mdelay(1000);
+    uart::print("Second core starting\n");
 
 
     uart::print("Starting VGA\n");
     unsafe { vga::vga2() }
-    // uart::print("Starting console\n");
+}
 
-    // cmd::run();
+unsafe fn test_second_core(){
+    let addr;
+    core::arch::asm!(
+        "la {0}, second_core_start",
+        out(reg) addr
+    );
+    platform::reset_c906l(addr)
 }
 
 const WIDTH: usize = 640 / 2;
