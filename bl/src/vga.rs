@@ -74,11 +74,9 @@ pub unsafe fn vga2() -> ! {
             // next scan line data prefetch
             if l/PIXEL_SCALE != LINES_VIS/PIXEL_SCALE-1{
                 let mut addr = 0x80000000 + (l+1)/PIXEL_SCALE * PIX_VIS/PIXEL_SCALE;
-                (addr as *mut u8).read_volatile();
-                ((addr + 4*8*2*1) as *mut u8).read_volatile();
-                ((addr + 4*8*2*2) as *mut u8).read_volatile();
-                ((addr + 4*8*2*3) as *mut u8).read_volatile();
-                ((addr + 4*8*2*4) as *mut u8).read_volatile();
+                for addr in (addr..(addr + PIX_VIS/PIXEL_SCALE)).step_by(4*8*2){
+                    (addr as *mut u8).read_volatile();
+                }
             } 
             
             while bp > timer::get_mtimer() {}
@@ -124,12 +122,10 @@ pub unsafe fn vga2() -> ! {
             start + per_line(const { LINES_VIS + V_FRONT_PORCH + V_SYNC_PULSE + V_BACK_PORCH });
         
         { // scan line 0 (vis) data prefetch
-            let mut addr = 0x80000000usize;
-            (addr as *mut u8).read_volatile();
-            ((addr + 4*8*2*1) as *mut u8).read_volatile();
-            ((addr + 4*8*2*2) as *mut u8).read_volatile();
-            ((addr + 4*8*2*3) as *mut u8).read_volatile();
-            ((addr + 4*8*2*4) as *mut u8).read_volatile();
+            let mut addr = 0x80000000;
+            for addr in (addr..(addr + PIX_VIS/PIXEL_SCALE)).step_by(4*8*2){
+                (addr as *mut u8).read_volatile();
+            }
         }
         {
             for l in (LINES_VIS + V_FRONT_PORCH + V_SYNC_PULSE)
