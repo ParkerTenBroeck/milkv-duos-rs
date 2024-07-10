@@ -75,6 +75,13 @@ core::arch::global_asm!(
     li x3, 0x2
     csrs {mhcr}, x3
 
+    # enable D-Cache prefetch
+    #li x3, 0x4
+    #csrs {mhint}, x3
+    # max cache lines
+    #li x3, 0x6000
+    #csrs {mhint}, x3
+
     la sp, __STACKS_END__
   
     la a3, __BSS_START__
@@ -100,5 +107,5 @@ core::arch::global_asm!(
     mxstatus = const mxstatus,
     mcor = const mcor,
     mhcr = const mhcr,
-    // mhint = const mhint,
+    mhint = const mhint,
 );

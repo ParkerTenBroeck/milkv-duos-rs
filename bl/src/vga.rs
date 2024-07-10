@@ -47,17 +47,19 @@ pub unsafe fn vga2() -> ! {
     unsafe { disable_interrupts() }
     loop {
         let start = timer::get_mtimer();
+        
         for l in 0..LINES_VIS {
+            let mut addr = 0x80000000 + l/PIXEL_SCALE * PIX_VIS/PIXEL_SCALE;
+            
             let lstart = start + per_line(l);
             for p in 0..(PIX_VIS / PIXEL_SCALE) {
-                let pstart = lstart + per_px(p * PIXEL_SCALE);
-                let indx = (l / PIXEL_SCALE * PIX_VIS / PIXEL_SCALE + p) as usize;
-                let addr = (indx + 0x80000000) as *mut u8;
-                let pval = addr.read_volatile() as u32;
-                let pval = (pval & 0b111) << 1 | const { H_SYNC_PL | V_SYNC_PL };
+                let pend = lstart + per_px((p+1) * PIXEL_SCALE);
+
+                let pval = ((addr+p) as *mut u8).read_volatile() as u32;
+                let pval = pval << 1 | const { H_SYNC_PL | V_SYNC_PL };
                 gpio_dr.write_volatile(pval);
 
-                while pstart > timer::get_mtimer() {}
+                while pend > timer::get_mtimer() {}
             }
             gpio_dr.write_volatile(const { H_SYNC_PL | V_SYNC_PL });
             let fp = lstart + const { per_px(PIX_VIS + H_FRONT_PORCH) };
@@ -69,12 +71,20 @@ pub unsafe fn vga2() -> ! {
             gpio_dr.write_volatile(const { H_SYNC_PL | V_SYNC_PL });
             let bp =
                 lstart + const { per_px(PIX_VIS + H_FRONT_PORCH + H_SYNC_PULSE + H_BACK_PORCH) };
+            // next scan line data prefetch
+            if l/PIXEL_SCALE != LINES_VIS/PIXEL_SCALE-1{
+                let mut addr = 0x80000000 + (l+1)/PIXEL_SCALE * PIX_VIS/PIXEL_SCALE;
+                (addr as *mut u8).read_volatile();
+                ((addr + 4*8*2*1) as *mut u8).read_volatile();
+                ((addr + 4*8*2*2) as *mut u8).read_volatile();
+                ((addr + 4*8*2*3) as *mut u8).read_volatile();
+                ((addr + 4*8*2*4) as *mut u8).read_volatile();
+            } 
+            
             while bp > timer::get_mtimer() {}
         }
-        // const test: u64 = per_px(96);
-        // gpio_dr.write_volatile(const { V_SYNC_PL });
+        
         let fp = start + per_line(const { LINES_VIS + V_FRONT_PORCH });
-        // while fp > timer::get_mtimer(){}
         {
             for l in LINES_VIS..(LINES_VIS + V_FRONT_PORCH) {
                 let lstart = start + per_line(l);
@@ -92,9 +102,7 @@ pub unsafe fn vga2() -> ! {
             }
         }
 
-        // gpio_dr.write_volatile(const { V_SYNC_PH });
         let sp = start + per_line(const { LINES_VIS + V_FRONT_PORCH + V_SYNC_PULSE });
-        // while sp > timer::get_mtimer(){}
         {
             for l in (LINES_VIS + V_FRONT_PORCH)..(LINES_VIS + V_FRONT_PORCH + V_SYNC_PULSE) {
                 let lstart = start + per_line(l);
@@ -112,10 +120,17 @@ pub unsafe fn vga2() -> ! {
             }
         }
 
-        // gpio_dr.write_volatile(const { V_SYNC_PL });
         let bp =
             start + per_line(const { LINES_VIS + V_FRONT_PORCH + V_SYNC_PULSE + V_BACK_PORCH });
-        // while bp > timer::get_mtimer(){}
+        
+        { // scan line 0 (vis) data prefetch
+            let mut addr = 0x80000000usize;
+            (addr as *mut u8).read_volatile();
+            ((addr + 4*8*2*1) as *mut u8).read_volatile();
+            ((addr + 4*8*2*2) as *mut u8).read_volatile();
+            ((addr + 4*8*2*3) as *mut u8).read_volatile();
+            ((addr + 4*8*2*4) as *mut u8).read_volatile();
+        }
         {
             for l in (LINES_VIS + V_FRONT_PORCH + V_SYNC_PULSE)
                 ..(LINES_VIS + V_FRONT_PORCH + V_SYNC_PULSE + V_BACK_PORCH)
