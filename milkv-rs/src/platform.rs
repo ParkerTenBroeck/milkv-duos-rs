@@ -1,6 +1,8 @@
 #![allow(non_camel_case_types)]
 #![allow(unused_parens)]
 
+use crate::{mmio_read_32, mmio_write_32};
+
 #[repr(C, align(512))]
 #[derive(Clone, Copy)]
 
@@ -542,3 +544,150 @@ pub struct _time_records {
   * USB definitions
   */
 //  #define USB_PHY_DETECTION
+
+
+
+
+
+
+
+
+pub unsafe fn init_pll_speed() {
+    // OD clk setting
+    let mut value;
+    let mut byp0_value;
+
+    let pll_syn_set = [
+        614400000, // set apll synthesizer  98.304 M
+        610080582, // set disp synthesizer  99 M
+        610080582, // set cam0 synthesizer  99 M
+        //586388132, // set cam1 synthesizer  103 M
+        615164587, // set cam1 synthesizer  98.18181818 M
+    ];
+
+    let pll_csr = [
+        0x00208201, // set apll *16/2 (786.432 MHz)
+        0x00188101, // set disp *12/1 (1188 MHz)
+        // 0x00188101, // set cam0 *12/1 (1188 MHz)
+        0x00308201, // set cam0 *24/2 (1188 MHz)
+        //0x00148101, // set cam1 *10/1 (1030 MHz)
+        0x00168101, // set cam1 *11/1 (1080 MHz)
+    ];
+
+    // NOTICE("PLLS/OD.\n");
+    unsafe fn config_core_power(low_period: u32) {
+        /*
+         * low_period = 0x42; // 0.90V
+         * low_period = 0x48; // 0.93V
+         * low_period = 0x4F; // 0.96V
+         * low_period = 0x58; // 1.00V
+         * low_period = 0x5C; // 1.02V
+         * low_period = 0x62; // 1.05V
+         * low_period = 0x62; // 1.05V
+         */
+        mmio_write_32!(PWM0_BASE + PWM_HLPERIOD0, low_period);
+        mmio_write_32!(PWM0_BASE + PWM_PERIOD0, 0x64);
+        mmio_write_32!(PINMUX_BASE + 0xA4, 0x0); // set pinmux for pwm0
+        mmio_write_32!(PWM0_BASE + PWM_START, 0x1); // enable bit0:pwm0
+        mmio_write_32!(PWM0_BASE + PWM_OE, 0x1); // output enable bit0:pwm0
+        crate::timer::mdelay(10);
+    }
+
+    // set vddc for OD clock
+    config_core_power(0x58); //1.00V
+
+    // store byp0 value
+    byp0_value = mmio_read_32!(0x03002030);
+
+    // switch clock to xtal
+    mmio_write_32!(0x03002030, 0xffffffff);
+    mmio_write_32!(0x03002034, 0x0000003f);
+
+    //set mipipll = 900MHz
+    mmio_write_32!(0x03002808, 0x05488101);
+
+    // set synthersizer clock
+    mmio_write_32!(REG_PLL_G2_SSC_SYN_CTRL, 0x3F); // enable synthesizer clock enable,
+                                                   // [0]: 1: MIPIMPLL(900)/1=900MHz,
+                                                   //      0: MIPIMPLL(900)/2=450MHz
+
+    for i in 0..4 {
+        mmio_write_32!(REG_APLL_SSC_SYN_SET + 0x10 * i, pll_syn_set[i as usize]); // set pll_syn_set
+
+        value = mmio_read_32!(REG_APLL_SSC_SYN_CTRL + 0x10 * i);
+        value |= 1; // [0]: sw update (w1t: write one toggle)
+        value &= !(1 << 4); // [4]: bypass = 0
+        mmio_write_32!(REG_APLL_SSC_SYN_CTRL + 0x10 * i, value);
+
+        mmio_write_32!(REG_APLL0_CSR + 4 * i, pll_csr[i as usize]); // set pll_csr
+    }
+
+    value = mmio_read_32!(REG_PLL_G2_CTRL);
+    value = value & (!0x00011111);
+    mmio_write_32!(REG_PLL_G2_CTRL, value); //clear all pll PD
+
+    // set mpll = 1050MHz
+    mmio_write_32!(0x03002908, 0x05548101);
+
+    // set clk_sel_23: [23] clk_sel for clk_c906_0 = 1 (DIV_IN0_SRC_MUX)
+    // set clk_sel_24: [24] clk_sel for clk_c906_1 = 1 (DIV_IN0_SRC_MUX)
+    mmio_write_32!(0x03002020, 0x01800000);
+
+    // set div, src_mux of clk_c906_0: [20:16]div_factor=1, [9:8]clk_src = 3 (mpll), 1050/1 = 1050MHz
+    mmio_write_32!(0x03002130, 0x00010309);
+
+    // set div, src_mux of clk_c906_1: [20:16]div_factor=1, [9:8]clk_src = 1 (a0pll), 786.432/1 = 786.432MHz
+    mmio_write_32!(0x03002138, 0x00010109);
+
+
+    // set tpll = 1400MHz
+    mmio_write_32!(0x0300290C, 0x07708101);
+
+    mmio_write_32!(0x03002048, 0x00020109); //clk_cpu_axi0 = DISPPLL(1188) / 2
+    mmio_write_32!(0x03002054, 0x00020009); //clk_tpu = TPLL(1400) / 2 = 700MHz
+    mmio_write_32!(0x03002064, 0x00080009); //clk_emmc = FPLL(1500) / 8 = 187.5MHz
+    mmio_write_32!(0x03002088, 0x00080009); //clk_spi_nand = FPLL(1500) / 8 = 187.5MHz
+    mmio_write_32!(0x03002098, 0x00200009); //clk_sdma_aud0 = APLL(786.432) / 32 = 24.576MHz
+    mmio_write_32!(0x03002120, 0x000F0009); //clk_pwm_src = FPLL(1500) / 15 = 100MHz
+    mmio_write_32!(0x030020A8, 0x00010009); //clk_uart -> clk_cam0_200 = XTAL(25) / 1 = 25MHz
+    mmio_write_32!(0x030020E4, 0x00030209); //clk_axi_video_codec = CAM1PLL(1080) / 3 = 360MHz
+    mmio_write_32!(0x030020EC, 0x00020109); //clk_vc_src0 = MIPIPLL(900) / 2 = 450MHz
+    mmio_write_32!(0x030020C8, 0x00030009); //clk_axi_vip = MIPIPLL(900) / 3 = 300MHz
+    mmio_write_32!(0x030020D0, 0x00060309); //clk_src_vip_sys_0 = FPLL(1500) / 6 = 250MHz
+    mmio_write_32!(0x030020D8, 0x00040209); //clk_src_vip_sys_1 = DISPPLL(1188)/ 4 = 297MHz
+    mmio_write_32!(0x03002110, 0x00020209); //clk_src_vip_sys_2 = DISPPLL(1188) / 2 = 594MHz
+                                            //mmio_write_32(0x03002140, 0x00020009); //clk_src_vip_sys_3 = MIPIPLL(900) / 2 = 450MHz
+    mmio_write_32!(0x03002144, 0x00030309); //clk_src_vip_sys_4 = FPLL(1500) / 3 = 500MHz
+
+    // set hsperi clock to PLL (FPLL) div by 5  = 300MHz
+    mmio_write_32!(0x030020B8, 0x00050009); //--> CLK_AXI4
+
+    // set rtcsys clock to PLL (FPLL) div by 5  = 300MHz
+    mmio_write_32!(0x0300212C, 0x00050009); // CLK_SRC_RTC_SYS_0
+
+    unsafe fn mmio_clrbits_32(addr: u32, clear: u32) {
+        mmio_write_32!(addr, mmio_read_32!(addr) & !clear);
+    }
+
+    // disable powerdown, mipimpll_d3_pd[2] = 0
+    mmio_clrbits_32(0x030028A0, 0x4);
+
+    // disable powerdown, cam0pll_d2_pd[1]/cam0pll_d3_pd[2] = 0
+    mmio_clrbits_32(0x030028AC, 0x6);
+
+    //wait for pll stable
+    crate::timer::udelay(200);
+
+    // switch clock to PLL from xtal except clk_axi4 & clk_spi_nand
+    byp0_value &= (
+        1 << 8 | //clk_spi_nand
+           1 << 19
+        //clk_axi4
+    );
+    mmio_write_32!(0x03002030, byp0_value); // REG_CLK_BYPASS_SEL0_REG
+    mmio_write_32!(0x03002034, 0x0); // REG_CLK_BYPASS_SEL1_REG
+
+
+    let div_clk_axi6 = (0x03002000 + 0x0bc) as *mut u32;
+    div_clk_axi6.write_volatile((1 << 3) | 0x40000 | (1));
+}

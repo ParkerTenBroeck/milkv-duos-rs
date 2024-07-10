@@ -1,6 +1,3 @@
-use csr::disable_interrupts;
-use csr::enable_interrupts;
-
 pub use crate::prelude::*;
 use crate::print;
 use crate::println;
@@ -736,31 +733,6 @@ const COMAMNDS: &[&'static dyn Command] = &[
           plic::disable_m_interrupt(int);
         }
       }
-    }),
-    cmd!("perf", "", (self, _args) -> {
-      extern "C"{
-          #[link_name = "magic_perf"]
-          fn magic_perf() -> (usize, usize);
-      }
-      println!("lol: {:?}", unsafe{magic_perf()});
-    }),
-    cmd!("perf2", "", (self, _args) -> {
-      #[inline(never)]
-      extern "C" fn magic_perf() -> (usize, usize) {
-          let rstart = timer::get_mtimer();
-          let mut val = 0;
-          unsafe{ csr::disable_interrupts(); }
-          let start = timer::get_mtimer();
-          while start == timer::get_mtimer() {
-              val += 1;
-          }
-          unsafe{ csr::enable_interrupts(); }
-          let t = timer::get_mtimer().wrapping_sub(rstart) as usize;
-          // uart::print("magic string :3\n");
-          (val, t)
-      }
-
-      println!("lol: {:?}", magic_perf());
     }),
 ];
 
