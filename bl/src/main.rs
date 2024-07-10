@@ -127,7 +127,6 @@ pub use prelude::*;
 // 	mmio_clrbits_32(REG_RTC_BASE + RTC_EN_PWR_VBAT_DET, 1 << 2);
 // }
 
-
 // fn idelay(v: u64) {
 //     for _ in 0..v {
 //         unsafe { core::arch::asm!("nop") }
@@ -224,41 +223,149 @@ pub extern "C" fn bl_rust_main() {
         rom_api::p_rom_api_load_image(dst, off as u32, size, 1);
     }
     uart::print("\n");
-    
 
     uart::print("Speeding up pll\n");
     unsafe {
         milkv_rs::platform::init_pll_speed();
     }
 
+
     uart::print("Initializing DDR memory video buffer\n");
-    let mem = unsafe{core::slice::from_raw_parts_mut(0x80000000 as *mut u8, 480*640)};
-    let mut iter = mem.chunks_mut(480 * 80);
-    let vert = iter.next().unwrap();
-    for line in vert.chunks_mut(480){
-        for (i, pix) in line.iter_mut().enumerate(){
-            *pix = i as u8;
-        }
+    unsafe{
+        init_vga();
     }
-    let vert = iter.next().unwrap();
-    for line in vert.chunks_mut(480){
-        for (i, pix) in line.iter_mut().enumerate(){
-            *pix = (i/2) as u8;
-        }
-    }
-    let hor = iter.next().unwrap();
-    for (i, line) in hor.chunks_mut(480).enumerate(){
-        for pix in line{
-            *pix = i as u8;
-        }
-    }
-    for (i, rest) in iter.enumerate(){
-        rest.fill(i as u8 + 1)
-    }
+
 
     uart::print("Starting VGA\n");
     unsafe { vga::vga2() }
     // uart::print("Starting console\n");
 
     // cmd::run();
+}
+
+const WIDTH: usize = 640 / 2;
+const HEIGHT: usize = 480 / 2;
+
+#[repr(u8)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Color {
+    Black = 0,
+    Red = 1,
+    Green = 2,
+    Yellow = 3,
+    Blue = 4,
+    Magenta = 5,
+    Cyan = 6,
+    White = 7,
+}
+
+impl From<Color> for embedded_graphics::pixelcolor::raw::RawU8 {
+    fn from(value: Color) -> Self {
+        (value as u8).into()
+    }
+}
+
+impl embedded_graphics::pixelcolor::PixelColor for Color {
+    type Raw = embedded_graphics::pixelcolor::raw::RawU8;
+}
+
+
+type FrameBuf = embedded_graphics::framebuffer::Framebuffer<
+    Color,
+    embedded_graphics::pixelcolor::raw::RawU8,
+    embedded_graphics::pixelcolor::raw::LittleEndian,
+    WIDTH,
+    HEIGHT,
+    { embedded_graphics::framebuffer::buffer_size::<Color>(WIDTH, HEIGHT) },
+    >;
+const FRAME_BUF: *mut FrameBuf = 0x80000000 as *mut FrameBuf;
+
+
+unsafe fn init_vga(){
+    let mem = unsafe { core::slice::from_raw_parts_mut(0x80000000 as *mut u8, WIDTH * HEIGHT) };
+    let mut iter = mem.chunks_mut(WIDTH * HEIGHT / 8);
+    let vert = iter.next().unwrap();
+    for line in vert.chunks_mut(WIDTH) {
+        for (i, pix) in line.iter_mut().enumerate() {
+            *pix = i as u8;
+        }
+    }
+    let vert = iter.next().unwrap();
+    for line in vert.chunks_mut(WIDTH) {
+        for (i, pix) in line.iter_mut().enumerate() {
+            *pix = (i / 2) as u8;
+        }
+    }
+    let hor = iter.next().unwrap();
+    for (i, line) in hor.chunks_mut(WIDTH).enumerate() {
+        for pix in line {
+            *pix = i as u8;
+        }
+    }
+    let vert = iter.next().unwrap();
+    for line in vert.chunks_mut(WIDTH) {
+        for (i, pix) in line.iter_mut().enumerate() {
+            *pix = if i & 1 == 0 { u8::MAX } else { 0 };
+        }
+    }
+    for (i, rest) in iter.enumerate() {
+        rest.fill(i as u8 + 1)
+    }
+
+
+    let display = unsafe { &mut *FRAME_BUF };
+
+    use embedded_graphics::{
+        mono_font::MonoTextStyle,
+        prelude::*,
+        primitives::{
+            Circle, PrimitiveStyle, Rectangle, Triangle,
+        },
+        text::{Alignment, Text},
+    };
+    use embedded_graphics::mono_font::*;
+
+    // Create styles used by the drawing operations.
+    let thin_stroke = PrimitiveStyle::with_stroke(Color::Red, 1);
+    let thick_stroke = PrimitiveStyle::with_stroke(Color::Green, 3);
+
+    let fill = PrimitiveStyle::with_fill(Color::Blue);
+    let character_style = MonoTextStyle::new(&ascii::FONT_5X7, Color::White);
+
+    let yoffset = HEIGHT as i32/8 *3 + 5;
+
+    // Draw a 3px wide outline around the display.
+    // display
+    //     .bounding_box()
+    //     .into_styled(border_stroke)
+    //     .draw(display)?;
+
+    // Draw a triangle.
+    Triangle::new(
+        Point::new(16, 16 + yoffset),
+        Point::new(16 + 16, 16 + yoffset),
+        Point::new(16 + 8, yoffset),
+    )
+    .into_styled(thin_stroke)
+    .draw(display).unwrap();
+
+    // Draw a filled square
+    Rectangle::new(Point::new(52, yoffset), Size::new(16, 16))
+        .into_styled(fill)
+        .draw(display).unwrap();
+
+    // Draw a circle with a 3px wide stroke.
+    Circle::new(Point::new(88, yoffset), 17)
+        .into_styled(thick_stroke)
+        .draw(display).unwrap();
+
+    // Draw centered text.
+    let text = "embedded-graphics :3";
+    Text::with_alignment(
+        text,
+        display.bounding_box().center() + Point::new(0, 15),
+        character_style,
+        Alignment::Center,
+    )
+    .draw(display).unwrap();
 }

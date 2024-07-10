@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 milkv-rs = { path = "../milkv-rs", features = ["ddr"]}
+embedded-graphics = "*"
 
 [profile.release]
 panic = "abort"
