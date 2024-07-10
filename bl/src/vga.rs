@@ -77,11 +77,12 @@ pub unsafe fn vga2() -> ! {
             let mut addr = 0x80000000 + l/PIXEL_SCALE * PIX_VIS/PIXEL_SCALE;
             
             let lstart = start + per_line(l);
-            // while lstart+1 > timer::get_mtimer() {}
+            while lstart+1 > timer::get_mtimer() {}
             for p in 0..(PIX_VIS / PIXEL_SCALE) {
                 let pend = lstart + per_px((p+1) * PIXEL_SCALE) 
                     //hack
-                    + if p < PIX_VIS/PIXEL_SCALE*99/100 {1} else {0}
+                    + if p > PIX_VIS/PIXEL_SCALE*9/16 {1} else {0}
+                    // +1
                     ;
                 if (pend +1) < timer::get_mtimer(){
                     continue;
@@ -111,7 +112,7 @@ pub unsafe fn vga2() -> ! {
                 }
             } 
             
-            while bp > timer::get_mtimer() {}
+            while (bp+1) > timer::get_mtimer() {}
         }
         
         
