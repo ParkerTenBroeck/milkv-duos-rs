@@ -53,7 +53,7 @@ SECTIONS
         . = ALIGN(0x1000);
         . = ALIGN(16);
         __BSS_START__ = .;
-        *(SORT_BY_ALIGNMENT(.bss*))
+        *(SORT_BY_ALIGNMENT(.*bss*))
         *(COMMON)
         . += 0x1000;
         . = ALIGN(16);

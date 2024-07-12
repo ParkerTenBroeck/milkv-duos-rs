@@ -47,6 +47,18 @@ core::arch::global_asm!(
     la t0, mtrap_vector
     csrw mtvec, t0
     // csrw stvec, t0
+
+    la sp, __STACKS_END__
+  
+    la a3, __BSS_START__
+    la a4, __BSS_END__
+    sub a4, a4, a3
+  
+  bss_clear:
+    sd x0, 0(a3)
+    addi a3, a3, 8
+    addi a4, a4, -8
+    bnez a4, bss_clear
   
     # set {mxstatus} to init value
     li x3, 0xc0638000
@@ -81,18 +93,6 @@ core::arch::global_asm!(
     # max cache lines
     #li x3, 0x6000
     #csrs {mhint}, x3
-
-    la sp, __STACKS_END__
-  
-    la a3, __BSS_START__
-    la a4, __BSS_END__
-    sub a4, a4, a3
-  
-  bss_clear:
-    sd x0, 0(a3)
-    addi a3, a3, 8
-    addi a4, a4, -8
-    bnez a4, bss_clear
   
     call bl_rust_main
 

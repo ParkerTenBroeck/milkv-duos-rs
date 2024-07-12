@@ -4,6 +4,15 @@ use milkv_rs::{plic, timer};
 
 use crate::println;
 
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct TrapFrame {
+	pub regs:       [usize; 32],
+	pub fregs:      [usize; 32],
+	pub satp:       usize,
+}
+
 core::arch::global_asm!(
     r#"
     .globl  mtrap_vector
@@ -13,8 +22,7 @@ core::arch::global_asm!(
 
     .balign 4
     mtrap_vector:
-        # j trap_handler
-        addi sp, sp, -8 * 29
+        addi sp, sp, -8 * 31
         sd x1, 1 * 8( sp )
         sd x5, 2 * 8( sp )
         sd x6, 3 * 8( sp )
@@ -43,9 +51,11 @@ core::arch::global_asm!(
         sd x29, 26 * 8( sp )
         sd x30, 27 * 8( sp )
         sd x31, 28 * 8( sp )
+        sd x3,  29 * 8( sp )
+        sd x4,  30 * 8( sp )
 
         csrr t0, mstatus
-        sd t0, 29 * 8( sp )
+        sd t0, 31 * 8( sp )
 
         csrr a0, mcause
         csrr a1, mepc
@@ -72,7 +82,7 @@ core::arch::global_asm!(
         ld t0, 0(sp)
         csrw mepc, t0
 
-        ld t0, 29 * 8(sp)
+        ld t0, 31 * 8(sp)
         csrw mstatus, t0
 
         
@@ -104,7 +114,9 @@ core::arch::global_asm!(
         ld x29, 26 * 8( sp )
         ld x30, 27 * 8( sp )
         ld x31, 28 * 8( sp ) 
-        addi sp, sp, 8 * 29
+        ld x3, 29 * 8( sp ) 
+        ld x4, 30 * 8( sp ) 
+        addi sp, sp, 8 * 31
 
         mret
     "#

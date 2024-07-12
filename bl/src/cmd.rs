@@ -734,11 +734,139 @@ const COMAMNDS: &[&'static dyn Command] = &[
         }
       }
     }),
+    cmd!("vgai", "", (self, _args) -> {
+        unsafe{
+            crate::vga_core::init_vga();
+        }
+    }),
+    cmd!("vgal", "", (self, _args) -> {
+        unsafe{
+            println!("H_FRONT_PORCH: {}", crate::vga::H_FRONT_PORCH);
+            println!("H_SYNC_PULSE: {}", crate::vga::H_SYNC_PULSE);
+            println!("H_BACK_PORCH: {}", crate::vga::H_BACK_PORCH);
+            println!("H_TOTAL: {}", crate::vga::H_TOTAL);
+
+            println!("\nH_FP_M: {}", crate::vga::H_FP_M);
+            println!("H_SP_M: {}", crate::vga::H_SP_M);
+            println!("H_BP_M: {}", crate::vga::H_BP_M);
+
+
+            println!("\nV_FRONT_PORCH: {}", crate::vga::V_FRONT_PORCH);
+            println!("V_SYNC_PULSE: {}", crate::vga::V_SYNC_PULSE);
+            println!("V_BACK_PORCH: {}", crate::vga::V_BACK_PORCH);
+            println!("V_TOTAL: {}", crate::vga::V_TOTAL);
+            core::arch::asm!(
+                "th.dcache.call"
+            );
+        }
+    }),
+    // cmd!("vgahsp", "(sync: u64)", (self, args) -> {
+    //     args!(args, (sync: usize));
+    //     unsafe{
+    //         crate::vga::H_TOTAL -= crate::vga::H_SYNC_PULSE;
+    //         crate::vga::H_TOTAL += sync as u64;
+    //         crate::vga::H_SYNC_PULSE = sync as u64;
+    //         core::arch::asm!(
+    //             "th.dcache.call"
+    //         );
+    //     }
+    // }),
+    // cmd!("vgahfp", "(fp: u64)", (self, args) -> {
+    //     args!(args, (sync: usize));
+    //     unsafe{
+    //         crate::vga::H_TOTAL -= crate::vga::H_FRONT_PORCH;
+    //         crate::vga::H_TOTAL += sync as u64;
+    //         crate::vga::H_FRONT_PORCH = sync as u64;
+    //         core::arch::asm!(
+    //             "th.dcache.call"
+    //         );
+    //     }
+    // }),
+    // cmd!("vgahbp", "(bp: u64)", (self, args) -> {
+    //     args!(args, (sync: usize));
+    //     unsafe{
+    //         crate::vga::H_TOTAL -= crate::vga::H_BACK_PORCH;
+    //         crate::vga::H_TOTAL += sync as u64;
+    //         crate::vga::H_BACK_PORCH = sync as u64;
+    //         core::arch::asm!(
+    //             "th.dcache.call"
+    //         );
+    //     }
+    // }),
+    // cmd!("vgahspm", "(sync: u64)", (self, args) -> {
+    //     args!(args, (sync: usize));
+    //     unsafe{
+    //         crate::vga::H_SP_M = sync as u64;
+    //         core::arch::asm!(
+    //             "th.dcache.call"
+    //         );
+    //     }
+    // }),
+    // cmd!("vgahfpm", "(fp: u64)", (self, args) -> {
+    //     args!(args, (sync: usize));
+    //     unsafe{
+    //         crate::vga::H_FP_M = sync as u64;
+    //         core::arch::asm!(
+    //             "th.dcache.call"
+    //         );
+    //     }
+    // }),
+    // cmd!("vgahbpm", "(bp: u64)", (self, args) -> {
+    //     args!(args, (sync: usize));
+    //     unsafe{
+    //         crate::vga::H_BP_M = sync as u64;
+    //         core::arch::asm!(
+    //             "th.dcache.call"
+    //         );
+    //     }
+    // }),
+    // cmd!("vgavsp", "(sync: u64)", (self, args) -> {
+    //     args!(args, (sync: usize));
+    //     unsafe{
+    //         crate::vga::V_TOTAL -= crate::vga::V_SYNC_PULSE;
+    //         crate::vga::V_TOTAL += sync as u64;
+    //         crate::vga::V_SYNC_PULSE = sync as u64;
+    //         core::arch::asm!(
+    //             "th.dcache.call"
+    //         );
+    //     }
+    // }),
+    // cmd!("vgavfp", "(fp: u64)", (self, args) -> {
+    //     args!(args, (sync: usize));
+    //     unsafe{
+    //         crate::vga::V_TOTAL -= crate::vga::V_FRONT_PORCH;
+    //         crate::vga::V_TOTAL += sync as u64;
+    //         crate::vga::V_FRONT_PORCH = sync as u64;
+    //         core::arch::asm!(
+    //             "th.dcache.call"
+    //         );
+    //     }
+    // }),
+    // cmd!("vgavbp", "(bp: u64)", (self, args) -> {
+    //     args!(args, (sync: usize));
+    //     unsafe{
+    //         crate::vga::V_TOTAL -= crate::vga::V_BACK_PORCH;
+    //         crate::vga::V_TOTAL += sync as u64;
+    //         crate::vga::V_BACK_PORCH = sync as u64;
+    //         core::arch::asm!(
+    //             "th.dcache.call"
+    //         );
+    //     }
+    // }),
+    // cmd!("vgad1", "(on: bool)", (self, args) -> {
+    //     args!(args, (sync: bool));
+    //     unsafe{
+    //         crate::vga::D1 = sync;
+    //         core::arch::asm!(
+    //             "th.dcache.call"
+    //         );
+    //     }
+    // }),
 ];
 
 pub fn run() {
-    let mut buffer = [0; 512];
     'next_cmd: loop {
+        let mut buffer = [0; 512];
         let msg = user_in(&mut buffer);
         let (cmd_mnemonic, args) = msg.trim().split_once(' ').unwrap_or((msg, ""));
         let args = args.trim();
