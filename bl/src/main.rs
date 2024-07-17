@@ -7,8 +7,9 @@ pub mod entry;
 pub mod interrupt_vector;
 pub mod panic;
 pub mod prelude;
+// pub mod vga;
+pub mod io;
 pub mod vga;
-pub mod vga_core;
 
 use platform::fip_param1;
 pub use prelude::*;
@@ -48,7 +49,7 @@ pub use prelude::*;
 // 	read_data = mmio_read_32!(REG_RTC_CTRL_BASE + RTC_CTRL0);
 // 	rtc_mode = (read_data >> 10) & 0x1;
 // 	if rtc_mode == 0x1 {
-// 		uart::print("By pass rtc mode switch\n");
+// 		io::print("By pass rtc mode switch\n");
 // 		return;
 // 	}
 
@@ -89,9 +90,9 @@ pub use prelude::*;
 //     use rtc::*;
 
 // 	read_data = mmio_read_32!(REG_RTC_BASE + RTC_ST_ON_REASON);
-// 	// uart::print("st_on_reason=%x\n", read_data);
+// 	// io::print("st_on_reason=%x\n", read_data);
 // 	read_data = mmio_read_32!(REG_RTC_BASE + RTC_ST_OFF_REASON);
-// 	// uart::print("st_off_reason=%x\n", read_data);
+// 	// io::print("st_off_reason=%x\n", read_data);
 
 // 	mmio_write_32!(REG_RTC_BASE + RTC_EN_SHDN_REQ, 0x01);
 // 	while mmio_read_32!(REG_RTC_BASE + RTC_EN_SHDN_REQ) != 0x01{}
@@ -136,19 +137,18 @@ pub use prelude::*;
 
 #[no_mangle]
 pub extern "C" fn bl_rust_main() {
-
     timer::mdelay(250);
     unsafe {
         uart::console_init();
     }
     timer::mdelay(250);
-    uart::print("\n\n\nBooted into firmware\nInitialized uart to 115200\n");
+    io::print("\n\n\nBooted into firmware\nInitialized uart to 115200\n");
 
     unsafe {
         if let Err(_) = security::efuse::lock_efuse() {
             reset();
         } else {
-            uart::print("Locked efuse\n");
+            io::print("Locked efuse\n");
         }
     }
 
@@ -159,134 +159,135 @@ pub extern "C" fn bl_rust_main() {
     // unsafe {
     //     setup_dl_flag()
     // }
-    // uart::print("setup dl flag\n");
+    // io::print("setup dl flag\n");
 
     // unsafe {
     //     switch_rtc_mode_1st_stage()
     // }
-    // uart::print("setup first stage rtc mode\n");
+    // io::print("setup first stage rtc mode\n");
 
     // unsafe {
     //     set_rtc_en_registers()
     // }
-    // uart::print("enabled rtc registers\n");
+    // io::print("enabled rtc registers\n");
 
     unsafe {
         ddr::init_ddr();
     }
-    uart::print("DDR initialized\n");
+    io::print("DDR initialized\n");
 
     unsafe {
         // set pinmux to enable output of LED pin
         mmio_write_32!(0x03001074, 0x3);
         gpio::set_gpio_direction(mmio::GPIO0, 29, gpio::Direction::Output);
     }
-    uart::print("Connfigured pinmux(LED pin 29)\n");
+    io::print("Connfigured pinmux(LED pin 29)\n");
 
-    uart::print("Enabling interrupts\n");
-    unsafe {
-        csr::enable_timer_interrupt();
-        csr::enable_interrupts();
-        // trigger an interrupt NOW
-        timer::set_timercmp(timer::get_mtimer());
-
-        // plic is seen as a single external interrupt source
-        csr::enable_external_interrupt();
-        // all enabled interrupts allowed
-        plic::mint_threshhold(0);
-
-         //--------------- timer 1 initialization ----------------------
-         interrupt_vector::add_plic_handler(interrupt::TIMER1, || {
-            vga_core::init_vga();
-            timer::mm::clear_int(mmio::TIMER1);
-        });
-        // timer 1 interrupt number
-        plic::set_priority(interrupt::TIMER1, 2);
-        plic::enable_m_interrupt(interrupt::TIMER1);
-
-        // initialize timer0
-        timer::mm::set_mode(mmio::TIMER1, timer::mm::TimerMode::Count);
-        // quarter second
-        timer::mm::set_load_value(mmio::TIMER1, timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 60);
-        timer::mm::set_enabled(mmio::TIMER1, true);
-        //-------------------------------------
-
-
-        //--------------- timer 0 initialization ----------------------
-        interrupt_vector::add_plic_handler(interrupt::TIMER0, || {
-            gpio::set_gpio(mmio::GPIO0, 29, !gpio::read_gpio(mmio::GPIO0, 29));
-            timer::mm::clear_int(mmio::TIMER0);
-        });
-
-        // timer 0 interrupt number
-        plic::set_priority(interrupt::TIMER0, 1);
-        plic::enable_m_interrupt(interrupt::TIMER0);
-
-        // initialize timer0
-        timer::mm::set_mode(mmio::TIMER0, timer::mm::TimerMode::Count);
-        // quarter second
-        timer::mm::set_load_value(mmio::TIMER0, timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 4);
-        timer::mm::set_enabled(mmio::TIMER0, true);
-        //-------------------------------------
-
-        plic::set_priority(interrupt::UART0, 1);
-        plic::enable_m_interrupt(interrupt::UART0);
-    }
-    uart::print("Interrupts enabled\n");
-
-    uart::print("Loading second stage\n");
+    io::print("Loading second stage\n");
     let dst = 0x80000000 as *mut core::ffi::c_void;
     let off = unsafe { (*mmio::PARAM1).bl2_img_size } as usize + core::mem::size_of::<fip_param1>();
     let size = unsafe { (*mmio::PARAM1).param2_size } as usize;
     unsafe {
         rom_api::p_rom_api_load_image(dst, off as u32, size, 1);
     }
-    uart::print("\n");
+    io::print("\n");
 
-
-    // unsafe{
-    //     core::arch::asm!(
-    //         "
-    //         # invalid I-cache
-    //         li x3, 0x33
-    //         csrc {mcor}, x3
-    //         li x3, 0x11
-    //         csrs {mcor}, x3
-    //         # enable I-cache
-    //         li x3, 0x1
-    //         csrc {mhcr}, x3
-            
-    //         # invalid D-cache
-    //         li x3, 0x33
-    //         csrc {mcor}, x3
-    //         li x3, 0x12
-    //         csrs {mcor}, x3
-    //         # enable D-cache
-    //         li x3, 0x2
-    //         csrc {mhcr}, x3
-    //         ",
-    //         mcor = const csr::mcor,
-    //         mhcr = const csr::mhcr,
-    //     );
-    // }
-
-    uart::print("Speeding up pll\n");
+    io::print("Speeding up pll\n");
     unsafe {
         milkv_rs::platform::init_pll_speed();
     }
 
-
-    uart::print("Initializing DDR memory video buffer\n");
-    unsafe{
-        vga_core::init_vga();
-    }
-
-    uart::print("Testing second core\n");
+    io::print("Initializing DDR memory video buffer\n");
     unsafe {
-        vga_core::run_on_second()
+        vga::init_vga();
     }
 
-    uart::print("Starting console\n");
-    
-    cmd::run();
+    io::print("Testing second core\n");
+    unsafe { vga::run_on_second() }
+
+    unsafe {
+        io::print("Enabling interrupts\n");
+        init_interrupts();
+        io::print("Interrupts enabled\n");
+    }
+
+    unsafe {
+        io::SOUT = |data| {
+            uart::print_bytes(data);
+            // vga::print(data);
+        }
+    }
+
+    io::print("Starting console\n");
+
+    // cmd::run();
+    loop {
+        unsafe {
+            let mut i = 0;
+            let mut start =
+                timer::get_mtimer().wrapping_add(timer::SYS_COUNTER_FREQ_IN_SECOND / 60);
+            while start > timer::get_mtimer() && i < BUFF.len() - 1 {
+                if uart::has_b() {
+                    start =
+                        timer::get_mtimer().wrapping_add(timer::SYS_COUNTER_FREQ_IN_SECOND / 60);
+                    BUFF[i] = uart::get_b();
+                    // if BUFF[i] == 226{
+                    //     panic!();
+                    // }
+                    i += 1
+                }
+            }
+            vga::print(&BUFF[..i]);
+        }
+    }
+}
+
+static mut BUFF: [u8; 1 << 14] = [0; 1 << 14];
+
+unsafe fn init_interrupts() {
+    csr::enable_timer_interrupt();
+    csr::enable_interrupts();
+    // trigger an interrupt NOW
+    timer::set_timercmp(timer::get_mtimer());
+
+    // plic is seen as a single external interrupt source
+    csr::enable_external_interrupt();
+    // all enabled interrupts allowed
+    plic::mint_threshhold(0);
+
+    //--------------- timer 1 initialization ----------------------
+    interrupt_vector::add_plic_handler(interrupt::TIMER1, || {
+        vga::init_vga();
+        timer::mm::clear_int(mmio::TIMER1);
+    });
+    // timer 1 interrupt number
+    plic::set_priority(interrupt::TIMER1, 2);
+    plic::enable_m_interrupt(interrupt::TIMER1);
+
+    // initialize timer1
+    timer::mm::set_mode(mmio::TIMER1, timer::mm::TimerMode::Count);
+    // quarter second
+    timer::mm::set_load_value(mmio::TIMER1, timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 60);
+    // timer::mm::set_enabled(mmio::TIMER1, true);
+    //-------------------------------------
+
+    //--------------- timer 0 initialization ----------------------
+    interrupt_vector::add_plic_handler(interrupt::TIMER0, || {
+        gpio::set_gpio(mmio::GPIO0, 29, !gpio::read_gpio(mmio::GPIO0, 29));
+        timer::mm::clear_int(mmio::TIMER0);
+    });
+
+    // timer 0 interrupt number
+    plic::set_priority(interrupt::TIMER0, 1);
+    plic::enable_m_interrupt(interrupt::TIMER0);
+
+    // initialize timer0
+    timer::mm::set_mode(mmio::TIMER0, timer::mm::TimerMode::Count);
+    // quarter second
+    timer::mm::set_load_value(mmio::TIMER0, timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 4);
+    timer::mm::set_enabled(mmio::TIMER0, true);
+    //-------------------------------------
+
+    plic::set_priority(interrupt::UART0, 1);
+    plic::enable_m_interrupt(interrupt::UART0);
 }

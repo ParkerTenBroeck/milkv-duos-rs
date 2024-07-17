@@ -1,3 +1,6 @@
+use core::arch;
+
+use crate::io;
 pub use crate::prelude::*;
 use crate::print;
 use crate::println;
@@ -108,28 +111,33 @@ fn user_in(buffer: &mut [u8]) -> &str {
     let mut len = 0;
     let mut pos = 0;
 
+    io::print("milkv :>");
     'outer: loop {
-        {
-            uart::print("\x1b[2K\x1b[0G");
-            let start_msg = "milkv :>";
-            uart::print(start_msg);
-            for b in &buffer[..len] {
-                uart::print_b(*b);
-            }
-            print!("\x1b[0G\x1b[{}C", pos + start_msg.len());
-        }
+        // if len != pos && len != 0{
+        //     io::print("\x1b[2K\x1b[0G");
+        //     let start_msg = "milkv :>";
+        //     io::print(start_msg);
+        //     io::print_bytes(&buffer[..len]);
+        //     print!("\x1b[0G\x1b[{}C", pos + start_msg.len());
+        // }
         'inner: while {
             match uart::get_b() {
                 0x1b => {
                     if uart::get_b() == 0x5b {
                         match uart::get_b() {
                             0x43 => {
-                                pos = (pos + 1).min(buffer.len() - 1).min(len);
                                 // right
+                                if pos < buffer.len() - 1 && pos < len {
+                                    pos += 1;
+                                    io::print("\x1b[1C");
+                                }
                             }
                             0x44 => {
-                                pos = pos.saturating_sub(1);
                                 // left
+                                if pos != 0 {
+                                    pos -= 1;
+                                    io::print("\x1b[1D");
+                                }
                             }
                             0x41 => {
                                 // up
@@ -142,6 +150,10 @@ fn user_in(buffer: &mut [u8]) -> &str {
                     }
                 }
                 0x03 => {
+                    if pos != 0 {
+                        print!("\x1b[{}D", pos);
+                    }
+                    io::print("\x1b[0J");
                     pos = 0;
                     len = 0;
                 }
@@ -153,6 +165,13 @@ fn user_in(buffer: &mut [u8]) -> &str {
                         }
                         pos -= 1;
                         len -= 1;
+
+                        io::print("\x1b[1D");
+                        io::print("\x1b[0J");
+                        if len - pos > 0 {
+                            io::print_bytes(&buffer[pos..len]);
+                            print!("\x1b[{}D", len - pos);
+                        }
                     }
                     break 'inner;
                 }
@@ -164,15 +183,19 @@ fn user_in(buffer: &mut [u8]) -> &str {
                         buffer[pos] = reg;
                         pos += 1;
                         len += 1;
-                        uart::print_b(reg);
+                        io::print_bytes(core::slice::from_ref(&reg));
+                        if len - pos > 0 {
+                            io::print_bytes(&buffer[pos..len]);
+                            print!("\x1b[{}D", len - pos);
+                        }
                     }
                 }
-                _ => panic!("invalid char"),
+                c => panic!("invalid char: {:#?}, {:02x}", c as char, c),
             }
             uart::has_b()
         } {}
     }
-    uart::print_c(b'\n');
+    io::print("\n");
 
     let command = &buffer[..len];
     core::str::from_utf8(command).unwrap()
@@ -537,10 +560,23 @@ const COMAMNDS: &[&'static dyn Command] = &[
             println!("{}: {}", cmd.name(), cmd.help())
         }
     }),
+    cmd!("clear", "Clears the screen", (self, _args) -> {
+        io::print("\x1b[2J")
+    }),
     cmd!("goto", "(addr: usize) jumps to the specified address", (self, args) -> {
         args!(args, (addr: usize));
         let func: fn() = unsafe{ core::mem::transmute(addr) };
         func();
+    }),
+    cmd!("memset", "(addr: usize, len: usize, val: u8) writes 'val' to address 'addr' for 'len' bytes", (self, args) -> {
+      args!(args, (addr: usize, len: usize, val: u8));
+      let time = timer::get_mtimer();
+      unsafe{
+
+        (addr as *mut u8).write_bytes(val, len);
+      }
+      let took = timer::get_mtimer().wrapping_sub(time)/timer::SYS_COUNTER_FREQ_IN_US;
+      println!("took: {took}us");
     }),
     cmd!("mw.8", "(addr: usize, val: u8) writes 'val' to address 'addr'", (self, args) -> {
       args!(args, (addr: usize, val: u8));
@@ -630,9 +666,9 @@ const COMAMNDS: &[&'static dyn Command] = &[
         );
       }
     }),
-    cmd!("invcache", "", (self, _args) -> {
-      csr::invalidate_d_cache()
-    }),
+    // cmd!("invcache", "", (self, _args) -> {
+    //   csr::invalidate_d_cache()
+    // }),
     cmd!("mtimer", "reads mtime/mtimecmp", (self, _args) -> {
       println!("mtimer:    0x{:016x}", timer::get_mtimer());
       println!("mtimercmp: 0x{:016x}", timer::get_timercmp());
@@ -734,30 +770,62 @@ const COMAMNDS: &[&'static dyn Command] = &[
         }
       }
     }),
-    cmd!("vgai", "", (self, _args) -> {
+    // cmd!("vgai", "", (self, _args) -> {
+    //     unsafe{
+    //         crate::vga_core::init_vga();
+    //     }
+    // }),
+    // cmd!("vgal", "", (self, _args) -> {
+    //     unsafe{
+    //         println!("H_FRONT_PORCH: {}", crate::vga::H_FRONT_PORCH);
+    //         println!("H_SYNC_PULSE: {}", crate::vga::H_SYNC_PULSE);
+    //         println!("H_BACK_PORCH: {}", crate::vga::H_BACK_PORCH);
+    //         println!("H_TOTAL: {}", crate::vga::H_TOTAL);
+
+    //         println!("\nH_FP_M: {}", crate::vga::H_FP_M);
+    //         println!("H_SP_M: {}", crate::vga::H_SP_M);
+    //         println!("H_BP_M: {}", crate::vga::H_BP_M);
+
+    //         println!("\nV_FRONT_PORCH: {}", crate::vga::V_FRONT_PORCH);
+    //         println!("V_SYNC_PULSE: {}", crate::vga::V_SYNC_PULSE);
+    //         println!("V_BACK_PORCH: {}", crate::vga::V_BACK_PORCH);
+    //         println!("V_TOTAL: {}", crate::vga::V_TOTAL);
+    //         core::arch::asm!(
+    //             "th.dcache.call"
+    //         );
+    //     }
+    // }),
+    cmd!("mcycle", "", (self, _args) -> {
+        println!("{}", csr::mcycle())
+    }),
+    cmd!("scr", "", (self, _args) -> {
         unsafe{
-            crate::vga_core::init_vga();
+            platform::reset_c906l();
         }
     }),
-    cmd!("vgal", "", (self, _args) -> {
+    cmd!("scs", "", (self, _args) -> {
         unsafe{
-            println!("H_FRONT_PORCH: {}", crate::vga::H_FRONT_PORCH);
-            println!("H_SYNC_PULSE: {}", crate::vga::H_SYNC_PULSE);
-            println!("H_BACK_PORCH: {}", crate::vga::H_BACK_PORCH);
-            println!("H_TOTAL: {}", crate::vga::H_TOTAL);
-
-            println!("\nH_FP_M: {}", crate::vga::H_FP_M);
-            println!("H_SP_M: {}", crate::vga::H_SP_M);
-            println!("H_BP_M: {}", crate::vga::H_BP_M);
-
-
-            println!("\nV_FRONT_PORCH: {}", crate::vga::V_FRONT_PORCH);
-            println!("V_SYNC_PULSE: {}", crate::vga::V_SYNC_PULSE);
-            println!("V_BACK_PORCH: {}", crate::vga::V_BACK_PORCH);
-            println!("V_TOTAL: {}", crate::vga::V_TOTAL);
-            core::arch::asm!(
-                "th.dcache.call"
-            );
+            platform::start_c906l();
+        }
+    }),
+    cmd!("lsc", "", (self, _args) -> {
+        unsafe{
+            platform::start_c906l();
+            let addr = core::array::from_fn::<_, 8, _>(|_|uart::get_b());
+            let len = core::array::from_fn::<_, 8, _>(|_|uart::get_b());
+            let addr = usize::from_be_bytes(addr);
+            let len = usize::from_be_bytes(len);
+            for i in addr..(addr + len){
+                (i as *mut u8).write(uart::get_b());
+            }
+            platform::reset_c906l_to_addr(addr);
+            for i in (addr..(addr + len)).step_by(64){
+                core::arch::asm!("
+                    th.dcache.cpa {0}
+                ",
+                in(reg) i);
+            }
+            println!("{addr}:{len}");
         }
     }),
     // cmd!("vgahsp", "(sync: u64)", (self, args) -> {

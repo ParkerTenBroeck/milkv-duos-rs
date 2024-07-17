@@ -564,10 +564,14 @@ pub unsafe fn init_pll_speed() {
         //586388132, // set cam1 synthesizer  103 M
         615164587, // set cam1 synthesizer  98.18181818 M
     ];
-
+    const DISP_CLK_CSR: u32 = /*disppll_pre_div_sel*/0x000001 
+                            | /*disppll_post_div_sel*/(0b0000001 << 8) 
+                            | /*disppll_sel_mode*/(0b01 << 15) 
+                            | /*disppll_div_sel*/(0b010101 << 17) 
+                            | /*disppll_ictrl*/(0b000 << 24);
     let pll_csr = [
         0x00208201, // set apll *16/2 (786.432 MHz)
-        0x00188101, // set disp *12/1 (1188 MHz)
+        0x00188101, // DISP_CLK_CSR, // set disp *12/1 (1188 MHz)
         // 0x00188101, // set cam0 *12/1 (1188 MHz)
         0x00308201, // set cam0 *24/2 (1188 MHz)
         //0x00148101, // set cam1 *10/1 (1030 MHz)
@@ -654,10 +658,14 @@ pub unsafe fn init_pll_speed() {
     mmio_write_32!(0x030020EC, 0x00020109); //clk_vc_src0 = MIPIPLL(900) / 2 = 450MHz
     mmio_write_32!(0x030020C8, 0x00030009); //clk_axi_vip = MIPIPLL(900) / 3 = 300MHz
     mmio_write_32!(0x030020D0, 0x00060309); //clk_src_vip_sys_0 = FPLL(1500) / 6 = 250MHz
-    mmio_write_32!(0x030020D8, 0x00040209); //clk_src_vip_sys_1 = DISPPLL(1188)/ 4 = 297MHz
-    mmio_write_32!(0x03002110, 0x00020209); //clk_src_vip_sys_2 = DISPPLL(1188) / 2 = 594MHz
+    mmio_write_32!(0x030020D8, 0x000F0209); //clk_src_vip_sys_1 = DISPPLL(1188)/ 4 = 297MHz
+    mmio_write_32!(0x03002110, 0x000F0209); //clk_src_vip_sys_2 = DISPPLL(1188) / 2 = 594MHz
                                             //mmio_write_32(0x03002140, 0x00020009); //clk_src_vip_sys_3 = MIPIPLL(900) / 2 = 450MHz
     mmio_write_32!(0x03002144, 0x00030309); //clk_src_vip_sys_4 = FPLL(1500) / 3 = 500MHz
+
+
+    let div_clk_axi6 = (0x03002000 + 0x0bc) as *mut u32;
+    div_clk_axi6.write_volatile((1 << 3) | 0x40000 | (1));
 
     // set hsperi clock to PLL (FPLL) div by 5  = 300MHz
     mmio_write_32!(0x030020B8, 0x00050009); //--> CLK_AXI4
@@ -671,21 +679,18 @@ pub unsafe fn init_pll_speed() {
     // disable powerdown, cam0pll_d2_pd[1]/cam0pll_d3_pd[2] = 0
     mmio_clrbits_32(0x030028AC, 0x6);
 
+
     //wait for pll stable
     crate::timer::udelay(200);
 
     // switch clock to PLL from xtal except clk_axi4 & clk_spi_nand
     byp0_value &= (
         1 << 8 | //clk_spi_nand
-           1 << 19
-        //clk_axi4
+        0 // 1 << 19 // clk_axi4
     );
     mmio_write_32!(0x03002030, byp0_value); // REG_CLK_BYPASS_SEL0_REG
     mmio_write_32!(0x03002034, 0x0); // REG_CLK_BYPASS_SEL1_REG
 
-
-    let div_clk_axi6 = (0x03002000 + 0x0bc) as *mut u32;
-    div_clk_axi6.write_volatile((1 << 3) | 0x40000 | (1));
 }
 
 unsafe fn mmio_clrbits_32(addr: u32, clear: u32) {
@@ -696,9 +701,15 @@ unsafe fn mmio_setbits_32(addr: u32, set: u32) {
     mmio_write_32!(addr, mmio_read_32!(addr) | set);
 }
 
-pub unsafe fn reset_c906l(reset_address: usize){
-	// NOTICE("RSC.\n");
+pub unsafe fn reset_c906l(){
+	mmio_clrbits_32(0x3003024, 1 << 6);
+}
 
+pub unsafe fn start_c906l(){
+	mmio_setbits_32(0x3003024, 1 << 6);
+}
+
+pub unsafe fn reset_c906l_to_addr(reset_address: usize){
 	mmio_clrbits_32(0x3003024, 1 << 6);
 
 	mmio_setbits_32(SEC_SYS_BASE + 0x04, 1 << 13);

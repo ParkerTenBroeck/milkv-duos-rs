@@ -1333,7 +1333,7 @@ unsafe fn phy_init() {
 	reg_span = ((tar_freq * 250) / (mod_freq as u64)) as u32;
 	reg_step = (reg_set as u64 * dev_freq / (reg_span as u64 * 1000)) as u32;
 
-	// uart::print("ddr_data_rate = %d, freq_in = %d reg_set = %lx tar_freq = %x reg_span = %lx reg_step = %lx\n",
+	// io::print("ddr_data_rate = %d, freq_in = %d reg_set = %lx tar_freq = %x reg_span = %lx reg_step = %lx\n",
 	// 	ddr_data_rate, freq_in, reg_set, tar_freq, reg_span, reg_step);
 
 
@@ -1359,7 +1359,7 @@ unsafe fn phy_init() {
         mmio_write_32!(0x58 + 0x03002900, rddata);
         rddata = get_bits_from_value(reg_step, 23, 0); // TOP_REG_SSC_STEP
         mmio_write_32!(0x5C + 0x03002900, rddata);
-        // uart::print("reg_step = %lx\n", reg_step);
+        // io::print("reg_step = %lx\n", reg_step);
 
         rddata = mmio_read_32!(0x50 + 0x03002900);
         rddata = modified_bits_by_value(rddata, !get_bits_from_value(rddata, 0, 0), 0, 0); // TOP_REG_SSC_SW_UP
@@ -1369,7 +1369,7 @@ unsafe fn phy_init() {
         rddata = modified_bits_by_value(rddata, 1, 5, 5); // extpulse
         rddata = modified_bits_by_value(rddata, 0, 6, 6); // ssc_syn_fix_div
         mmio_write_32!(0x50 + 0x03002900, rddata);
-        uart::print("SSC_EN\n");
+        io::print("SSC_EN\n");
     }else{
         if SSC_BYPASS{
             rddata = (reg_set & 0xfc000000) + 0x04000000; // TOP_REG_SSC_SET
@@ -1386,12 +1386,12 @@ unsafe fn phy_init() {
             rddata = modified_bits_by_value(rddata, 1, 5, 5); // TOP_REG_SSC_EXTPULSE
             rddata = modified_bits_by_value(rddata, 1, 6, 6); // ssc_syn_fix_div
             mmio_write_32!(0x50 + 0x03002900, rddata);
-            uart::print("SSC_BYPASS\n");
+            io::print("SSC_BYPASS\n");
         }else{
             //==============================================================
             // SSC_EN =0
             //==============================================================
-            uart::print("SSC_EN =0\n");
+            io::print("SSC_EN =0\n");
             rddata = reg_set; // TOP_REG_SSC_SET
             mmio_write_32!(0x54 + 0x03002900, rddata);
             rddata = get_bits_from_value(reg_span, 15, 0); // TOP_REG_SSC_SPAN
@@ -1406,7 +1406,7 @@ unsafe fn phy_init() {
             rddata = modified_bits_by_value(rddata, 1, 5, 5); // TOP_REG_SSC_EXTPULSE
             rddata = modified_bits_by_value(rddata, 0, 6, 6); // ssc_syn_fix_div
             mmio_write_32!(0x50 + 0x03002900, rddata);
-            uart::print("SSC_OFF\n");
+            io::print("SSC_OFF\n");
         } // SSC_BYPASS
     } // SSC_EN
 
@@ -1437,12 +1437,12 @@ unsafe fn phy_init() {
 	//[0]   = 1;    //TOP_REG_RESETZ_DIV
 	rddata = 0x1;
 	mmio_write_32!(0x04 + CV_DDR_PHYD_APB, rddata);
-	uart::print("RSTZ_DIV=1\n");
+	io::print("RSTZ_DIV=1\n");
 	rddata = mmio_read_32!(0x0C + CV_DDR_PHYD_APB);
 	//[7]   = 1;    //TOP_REG_DDRPLL_MAS_RSTZ_DIV
 	rddata = modified_bits_by_value(rddata, 1, 7, 7);
 	mmio_write_32!(0x0C + CV_DDR_PHYD_APB, rddata);
-	uart::print("Wait for DRRPLL LOCK=1... pll init\n");
+	io::print("Wait for DRRPLL LOCK=1... pll init\n");
 
 
 
@@ -1473,7 +1473,7 @@ struct UART0;
 
 impl core::fmt::Write for UART0{
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        uart::print(s);
+        io::print(s);
         Ok(())
     }
 }
@@ -1532,7 +1532,7 @@ unsafe fn load_param2(retry: core::ffi::c_int) -> core::ffi::c_int{
 		return -1;
 	}
 
-	uart::print("P2E.\n");
+	io::print("P2E.\n");
 
 	return 0;
 }
@@ -1575,14 +1575,14 @@ pub unsafe fn load_ddr(){
 pub unsafe fn init_ddr() {
     load_ddr();
 
-	crate::uart::print("phy init\n");
+	crate::io::print("phy init\n");
     phy_init();
-	crate::uart::print("ddrc init\n");
+	crate::io::print("ddrc init\n");
 
     let mut rddata;
 
     ddrc_init();
-	crate::uart::print("ddrc finished\n");
+	crate::io::print("ddrc finished\n");
 
     mmio_write_32!(0x0800A000 + 0x20, 0x0);
 
@@ -1597,53 +1597,53 @@ pub unsafe fn init_ddr() {
 	mmio_write_32!(0x030001DC, 0x00002299);
 
     // cvx16_setting_check();
-	// crate::uart::print("cvx16_setting_check  finish\n");
+	// crate::io::print("cvx16_setting_check  finish\n");
 
 	// pinmux
 	cvx16_pinmux();
-	crate::uart::print("cvx16_pinmux finish\n");
+	crate::io::print("cvx16_pinmux finish\n");
 
 	ddr_patch_set();
 
 	cvx16_en_rec_vol_mode();
-	crate::uart::print("cvx16_en_rec_vol_mode finish\n");
+	crate::io::print("cvx16_en_rec_vol_mode finish\n");
 
 	// set_dfi_init_start
 	cvx16_set_dfi_init_start();
-	crate::uart::print("set_dfi_init_start finish\n");
+	crate::io::print("set_dfi_init_start finish\n");
 
 	// ddr_phy_power_on_seq1
 	cvx16_ddr_phy_power_on_seq1();
-	crate::uart::print("ddr_phy_power_on_seq1 finish\n");
+	crate::io::print("ddr_phy_power_on_seq1 finish\n");
 
 	// first dfi_init_start
-	crate::uart::print("first dfi_init_start\n");
+	crate::io::print("first dfi_init_start\n");
 	cvx16_polling_dfi_init_start();
-	crate::uart::print("cvx16_polling_dfi_init_start finish\n");
+	crate::io::print("cvx16_polling_dfi_init_start finish\n");
 
 	cvx16_INT_ISR_08();
-	crate::uart::print("cvx16_INT_ISR_08 finish\n");
+	crate::io::print("cvx16_INT_ISR_08 finish\n");
 
 	// ddr_phy_power_on_seq3
 	cvx16_ddr_phy_power_on_seq3();
-	crate::uart::print("ddr_phy_power_on_seq3 finish\n");
+	crate::io::print("ddr_phy_power_on_seq3 finish\n");
 
 	// wait_for_dfi_init_complete
 	cvx16_wait_for_dfi_init_complete();
-	crate::uart::print("wait_for_dfi_init_complete finish\n");
+	crate::io::print("wait_for_dfi_init_complete finish\n");
 
 	// polling_synp_normal_mode
 	cvx16_polling_synp_normal_mode();
-	crate::uart::print("polling_synp_normal_mode finish\n");
+	crate::io::print("polling_synp_normal_mode finish\n");
 
 
     ctrl_init_low_patch();
-	crate::uart::print("ctrl_low_patch finish\n");
+	crate::io::print("ctrl_low_patch finish\n");
 
 
 	// cvx16_rdglvl_req
 	cvx16_rdglvl_req();
-	crate::uart::print("cvx16_rdglvl_req finish\n");
+	crate::io::print("cvx16_rdglvl_req finish\n");
 
 
 
@@ -1652,7 +1652,7 @@ pub unsafe fn init_ddr() {
 
 
     	// cvx16_wdqlvl_req
-        crate::uart::print("wdqlvl_M1_ALL_DQ_DM\n");
+        crate::io::print("wdqlvl_M1_ALL_DQ_DM\n");
 	// sso_8x1_c(5, 15, 0, 1, &sram_sp);//mode = write, input int fmin = 5, input int fmax = 15,
 					    //input int sram_st = 0, output int sram_sp
 
@@ -1665,13 +1665,13 @@ pub unsafe fn init_ddr() {
 	// lvl_mode  = 'h2 : wdqlvl and wdmlvl
 	// cvx16_wdqlvl_req(data_mode, lvl_mode);
 	cvx16_wdqlvl_req(1, 2);
-	crate::uart::print("cvx16_wdqlvl_req dq/dm finish\n");
+	crate::io::print("cvx16_wdqlvl_req dq/dm finish\n");
 
 	cvx16_wdqlvl_req(1, 1);
-	crate::uart::print("cvx16_wdqlvl_req dq finish\n");
+	crate::io::print("cvx16_wdqlvl_req dq finish\n");
 
 	cvx16_wdqlvl_req(1, 0);
-	crate::uart::print("cvx16_wdqlvl_req dm finish\n");
+	crate::io::print("cvx16_wdqlvl_req dm finish\n");
 
 
 
@@ -1691,10 +1691,10 @@ pub unsafe fn init_ddr() {
 	rddata = modified_bits_by_value(rddata, 1, 7, 4); // param_phyd_pirdlvl_capture_cnt
 	mmio_write_32!(0x008c + PHYD_BASE_ADDR, rddata);
 
-	crate::uart::print("mode multi- bist write/read\n");
+	crate::io::print("mode multi- bist write/read\n");
 	// cvx16_rdlvl_req(2); // mode multi- PRBS bist write/read
 	cvx16_rdlvl_req(1); // mode multi- SRAM bist write/read
-	crate::uart::print("cvx16_rdlvl_req finish\n");
+	crate::io::print("cvx16_rdlvl_req finish\n");
 
 
 
@@ -1707,18 +1707,18 @@ pub unsafe fn init_ddr() {
 	ctrl_init_high_patch();
 
 	let dram_cap_in_mbyte = ctrl_init_detect_dram_size();
-	crate::uart::print("ctrl_init_detect_dram_size finish\n");
+	crate::io::print("ctrl_init_detect_dram_size finish\n");
 
 	ctrl_init_update_by_dram_size(dram_cap_in_mbyte);
-	crate::uart::print("ctrl_init_update_by_dram_size finish\n");
+	crate::io::print("ctrl_init_update_by_dram_size finish\n");
 
-	// crate::uart::print("dram_cap_in_mbyte = %x\n", dram_cap_in_mbyte);
+	// crate::io::print("dram_cap_in_mbyte = %x\n", dram_cap_in_mbyte);
 	cvx16_dram_cap_check(dram_cap_in_mbyte);
-	crate::uart::print("cvx16_dram_cap_check finish\n");
+	crate::io::print("cvx16_dram_cap_check finish\n");
 
 	// clk_gating_enable
 	cvx16_clk_gating_enable();
-	crate::uart::print("cvx16_clk_gating_enable finish\n");
+	crate::io::print("cvx16_clk_gating_enable finish\n");
 
 
 
@@ -1740,7 +1740,7 @@ unsafe fn cvx16_set_dfi_init_start() {
     	// synp setting
 	// phy is ready for initial dfi_init_start request
 	// set umctl2 to tigger dfi_init_start
-	uart::print("cvx16_set_dfi_init_start\n");
+	io::print("cvx16_set_dfi_init_start\n");
 	// ddr_debug_wr32(0x0d);
 	// ddr_debug_num_write();
 	mmio_write_32!(cfg_base + 0x00000320, 0x00000000);
@@ -1748,13 +1748,13 @@ unsafe fn cvx16_set_dfi_init_start() {
 	rddata = modified_bits_by_value(rddata, 1, 5, 5);
 	mmio_write_32!(cfg_base + 0x000001b0, rddata);
 	mmio_write_32!(cfg_base + 0x00000320, 1);
-	uart::print("dfi_init_start finish\n");
+	io::print("dfi_init_start finish\n");
 }
 
 unsafe fn cvx16_ddr_phy_power_on_seq1() {
     let mut rddata;
 	// power_seq_1
-	// uart::print("%s\n", __func__);
+	// io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x0e);
 	// ddr_debug_num_write();
 	// RESETZ/CKE PD=0
@@ -1764,37 +1764,37 @@ unsafe fn cvx16_ddr_phy_power_on_seq1() {
 	// TOP_REG_TX_CA_PD_RESETZ
 	rddata = modified_bits_by_value(rddata, 0, 30, 30);
 	mmio_write_32!(0x40 + CV_DDR_PHYD_APB, rddata);
-	uart::print("RESET PD !!!\n");
+	io::print("RESET PD !!!\n");
 
 	// CA PD=0
 	// All PHYA CA PD=0
 	rddata = mmio_read_32!(0x40 + CV_DDR_PHYD_APB);
 	rddata = modified_bits_by_value(rddata, 0, 31, 0);
 	mmio_write_32!(0x40 + CV_DDR_PHYD_APB, rddata);
-	uart::print("All PHYA CA PD=0 ...\n");
+	io::print("All PHYA CA PD=0 ...\n");
 
 	// TOP_REG_TX_SEL_GPIO = 1 (DQ)
 	rddata = mmio_read_32!(0x1c + CV_DDR_PHYD_APB);
 	rddata = modified_bits_by_value(rddata, 1, 7, 7);
 	mmio_write_32!(0x1c + CV_DDR_PHYD_APB, rddata);
-	uart::print("TOP_REG_TX_SEL_GPIO = 1\n");
+	io::print("TOP_REG_TX_SEL_GPIO = 1\n");
 
 	// DQ PD=0
 	// TOP_REG_TX_BYTE0_PD
 	// TOP_REG_TX_BYTE1_PD
 	rddata = 0x00000000;
 	mmio_write_32!(0x00 + CV_DDR_PHYD_APB, rddata);
-	uart::print("TX_BYTE PD=0 ...\n");
+	io::print("TX_BYTE PD=0 ...\n");
 
 	// TOP_REG_TX_SEL_GPIO = 0 (DQ)
 	rddata = mmio_read_32!(0x1c + CV_DDR_PHYD_APB);
 	rddata = modified_bits_by_value(rddata, 0, 7, 7);
 	mmio_write_32!(0x1c + CV_DDR_PHYD_APB, rddata);
-	uart::print("TOP_REG_TX_SEL_GPIO = 0\n");
+	io::print("TOP_REG_TX_SEL_GPIO = 0\n");
 }
 
 unsafe fn cvx16_polling_dfi_init_start() {
-    // uart::print("%s\n", __func__);
+    // io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x11);
 	// ddr_debug_num_write();
 	loop {
@@ -1810,7 +1810,7 @@ unsafe fn cvx16_INT_ISR_08() {
 	let CUR_PLL_SPEED: u32;
 	let NEXT_PLL_SPEED: u32;
 
-	// uart::print("%s\n", __func__);
+	// io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x1c);
 	// ddr_debug_num_write();
 	// param_phyd_clkctrl_init_complete   <= int_regin[0];
@@ -1821,7 +1821,7 @@ unsafe fn cvx16_INT_ISR_08() {
 	EN_PLL_SPEED_CHG = get_bits_from_value(rddata, 0, 0);
 	CUR_PLL_SPEED = get_bits_from_value(rddata, 5, 4);
 	NEXT_PLL_SPEED = get_bits_from_value(rddata, 9, 8);
-	// uart::print("CUR_PLL_SPEED = %x, NEXT_PLL_SPEED = %x, EN_PLL_SPEED_CHG=%x\n", CUR_PLL_SPEED, NEXT_PLL_SPEED,
+	// io::print("CUR_PLL_SPEED = %x, NEXT_PLL_SPEED = %x, EN_PLL_SPEED_CHG=%x\n", CUR_PLL_SPEED, NEXT_PLL_SPEED,
 	//        EN_PLL_SPEED_CHG);
 
 	//----------------------------------------------------
@@ -1831,11 +1831,11 @@ unsafe fn cvx16_INT_ISR_08() {
 
 unsafe fn cvx16_ddr_phy_power_on_seq2() {
     let mut rddata;
-	// uart::print("%s\n", __func__);
+	// io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x0f);
 	// ddr_debug_num_write();
 	// Change PLL frequency
-	uart::print("Change PLL frequency if necessary ...\n");
+	io::print("Change PLL frequency if necessary ...\n");
 
 	cvx16_chg_pll_freq();
 	// OEN
@@ -1849,49 +1849,49 @@ unsafe fn cvx16_ddr_phy_power_on_seq2() {
 	rddata = 0x00000000;
 	mmio_write_32!(0x0130 + PHYD_BASE_ADDR, rddata);
 	// Do DLLCAL if necessary
-	uart::print("Do DLLCAL if necessary ...\n");
+	io::print("Do DLLCAL if necessary ...\n");
 
 	cvx16_dll_cal();
-	uart::print("Do DLLCAL done\n");
+	io::print("Do DLLCAL done\n");
 
-	//    uart::print("Do ZQCAL if necessary ...\n");
+	//    io::print("Do ZQCAL if necessary ...\n");
 
 	// cvx16_ddr_zqcal_hw_isr8(0x7);//zqcal hw mode, bit0: offset_cal, bit1:pl_en, bit2:step2_en
-	// uart::print("Do ZQCAL done\n");
+	// io::print("Do ZQCAL done\n");
 
-	uart::print("cv181x without ZQ Calibration ...\n");
+	io::print("cv181x without ZQ Calibration ...\n");
 
 	// cvx16_ddr_zq240_cal();//zq240_cal
-	// uart::print("Do cvx16_ddr_zq240_cal done\n");
+	// io::print("Do cvx16_ddr_zq240_cal done\n");
 
-	uart::print("cv181x without ZQ240 Calibration ...\n");
+	io::print("cv181x without ZQ240 Calibration ...\n");
 
 	// zq calculate variation
 	//  zq_cal_var();
-	uart::print("zq calculate variation not run\n");
+	io::print("zq calculate variation not run\n");
 
 	// CA PD =0
 	// All PHYA CA PD=0
 	rddata = 0x80000000;
 	mmio_write_32!(0x40 + CV_DDR_PHYD_APB, rddata);
-	uart::print("All PHYA CA PD=0 ...\n");
+	io::print("All PHYA CA PD=0 ...\n");
 
 	// BYTE PD =0
 	rddata = 0x00000000;
 	mmio_write_32!(0x00 + CV_DDR_PHYD_APB, rddata);
-	uart::print("TX_BYTE PD=0 ...\n");
+	io::print("TX_BYTE PD=0 ...\n");
 
 	// power_on_2
 }
 
 unsafe fn cvx16_clk_div2() {
-	uart::print("div2 original frequency !!!\n\n");
+	io::print("div2 original frequency !!!\n\n");
 
 	let mut rddata = mmio_read_32!(0x0c + CV_DDR_PHYD_APB);
 	// rddata[14] = 1  ;  // TOP_REG_DDRPLL_MAS_DIV_OUT_SEL 1
 	rddata = modified_bits_by_value(rddata, 1, 14, 14);
 	mmio_write_32!(0x0c + CV_DDR_PHYD_APB, rddata);
-	uart::print("div2 original frequency\n");
+	io::print("div2 original frequency\n");
 }
 
 unsafe fn cvx16_chg_pll_freq(){
@@ -1900,7 +1900,7 @@ unsafe fn cvx16_chg_pll_freq(){
 	let mut CUR_PLL_SPEED: u32;
 	let mut NEXT_PLL_SPEED: u32;
 
-	// uart::print("%s\n", __func__);
+	// io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x04);
 	// ddr_debug_num_write();
 	// Change PLL frequency
@@ -1913,7 +1913,7 @@ unsafe fn cvx16_chg_pll_freq(){
 	rddata = mmio_read_32!(0x0C + CV_DDR_PHYD_APB);
 	rddata = modified_bits_by_value(rddata, 0, 7, 7);
 	mmio_write_32!(0x0C + CV_DDR_PHYD_APB, rddata);
-	uart::print("RSTZ_DIV=0\n");
+	io::print("RSTZ_DIV=0\n");
 	rddata = mmio_read_32!(0x4c + CV_DDR_PHYD_APB);
 	rddata = mmio_read_32!(0x4c + CV_DDR_PHYD_APB);
 	rddata = mmio_read_32!(0x4c + CV_DDR_PHYD_APB);
@@ -1923,7 +1923,7 @@ unsafe fn cvx16_chg_pll_freq(){
 	EN_PLL_SPEED_CHG = get_bits_from_value(rddata, 0, 0);
 	CUR_PLL_SPEED = get_bits_from_value(rddata, 5, 4);
 	NEXT_PLL_SPEED = get_bits_from_value(rddata, 9, 8);
-	// uart::print("CUR_PLL_SPEED = %x, NEXT_PLL_SPEED = %x, EN_PLL_SPEED_CHG=%x\n", CUR_PLL_SPEED, NEXT_PLL_SPEED,
+	// io::print("CUR_PLL_SPEED = %x, NEXT_PLL_SPEED = %x, EN_PLL_SPEED_CHG=%x\n", CUR_PLL_SPEED, NEXT_PLL_SPEED,
 	//        EN_PLL_SPEED_CHG);
 
 	if (EN_PLL_SPEED_CHG != 0) {
@@ -1932,24 +1932,24 @@ unsafe fn cvx16_chg_pll_freq(){
 			rddata = modified_bits_by_value(rddata, CUR_PLL_SPEED, 9, 8);
 			mmio_write_32!(0x4c + CV_DDR_PHYD_APB, rddata);
 			cvx16_clk_div40();
-			uart::print("clk_div40\n");
-			uart::print("clk_div40\n");
+			io::print("clk_div40\n");
+			io::print("clk_div40\n");
 		} else {
 			if (NEXT_PLL_SPEED == 0x2) { // next clk normal
 				rddata = modified_bits_by_value(rddata, NEXT_PLL_SPEED, 5, 4);
 				rddata = modified_bits_by_value(rddata, CUR_PLL_SPEED, 9, 8);
 				mmio_write_32!(0x4c + CV_DDR_PHYD_APB, rddata);
 				cvx16_clk_normal();
-				uart::print("clk_normal\n");
-				uart::print("clk_normal\n");
+				io::print("clk_normal\n");
+				io::print("clk_normal\n");
 			} else {
 				if (NEXT_PLL_SPEED == 0x1) { // next clk normal div_2
 					rddata = modified_bits_by_value(rddata, NEXT_PLL_SPEED, 5, 4);
 					rddata = modified_bits_by_value(rddata, CUR_PLL_SPEED, 9, 8);
 					mmio_write_32!(0x4c + CV_DDR_PHYD_APB, rddata);
 					cvx16_clk_div2();
-					uart::print("clk_div2\n");
-					uart::print("clk_div2\n");
+					io::print("clk_div2\n");
+					io::print("clk_div2\n");
 				}
 			}
 		}
@@ -1962,36 +1962,36 @@ unsafe fn cvx16_chg_pll_freq(){
 	// rddata[7]   = 1;    //TOP_REG_DDRPLL_MAS_RSTZ_DIV
 	rddata = modified_bits_by_value(rddata, 1, 7, 7);
 	mmio_write_32!(0x0C + CV_DDR_PHYD_APB, rddata);
-	uart::print("RSTZ_DIV=1\n");
+	io::print("RSTZ_DIV=1\n");
 	// rddata[0]   = 1;    //TOP_REG_RESETZ_DQS
 	rddata = 0x00000001;
 	mmio_write_32!(0x08 + CV_DDR_PHYD_APB, rddata);
-	uart::print("TOP_REG_RESETZ_DQS\n");
-	uart::print("Wait for DRRPLL_SLV_LOCK=1...\n");
+	io::print("TOP_REG_RESETZ_DQS\n");
+	io::print("Wait for DRRPLL_SLV_LOCK=1...\n");
 
     let REAL_LOCK = true;
  if REAL_LOCK{
 	rddata = modified_bits_by_value(rddata, 0, 15, 15);
 	while (get_bits_from_value(rddata, 15, 15) == 0) {
 		rddata = mmio_read_32!(0x10 + CV_DDR_PHYD_APB);
-		uart::print("REAL_LOCK.\n");
+		io::print("REAL_LOCK.\n");
 
 		opdelay(200);
 	}
 }else{
-	uart::print("check PLL lock...  pll init\n");
+	io::print("check PLL lock...  pll init\n");
 }
 	//} Change PLL frequency
 }
 
 unsafe fn cvx16_clk_div40() {
-	uart::print("Enter low D40 frequency !!!\n\n");
+	io::print("Enter low D40 frequency !!!\n\n");
 
 	let mut rddata = mmio_read_32!(0x0c + CV_DDR_PHYD_APB);
 	// TOP_REG_DDRPLL_SEL_LOW_SPEED =1
 	rddata = modified_bits_by_value(rddata, 1, 13, 13);
 	mmio_write_32!(0x0c + CV_DDR_PHYD_APB, rddata);
-	uart::print("Enter low D40 frequency\n");
+	io::print("Enter low D40 frequency\n");
 }
 
 unsafe fn opdelay(times: usize){
@@ -2002,7 +2002,7 @@ unsafe fn opdelay(times: usize){
 
 unsafe fn cvx16_clk_normal() {
 	let mut rddata;
-	uart::print("back to original frequency !!!\n\n");
+	io::print("back to original frequency !!!\n\n");
 
 	rddata = mmio_read_32!(0x0c + CV_DDR_PHYD_APB);
 	// rddata[13] TOP_REG_DDRPLL_SEL_LOW_SPEED 0
@@ -2030,7 +2030,7 @@ unsafe fn cvx16_clk_normal() {
 	rddata = modified_bits_by_value(rddata, 1, 5, 5); // extpulse
 	rddata = modified_bits_by_value(rddata, 0, 6, 6); // ssc_syn_fix_div
 	mmio_write_32!(0x50 + 0x03002900, rddata);
-	uart::print("SSC_EN\n");
+	io::print("SSC_EN\n");
 	}else{
 		if SSC_BYPASS{
 			rddata = (reg_set & 0xfc000000) + 0x04000000; // TOP_REG_SSC_SET
@@ -2046,12 +2046,12 @@ unsafe fn cvx16_clk_normal() {
 			rddata = modified_bits_by_value(rddata, 0, 4, 4); // TOP_REG_SSC_BYPASS
 			rddata = modified_bits_by_value(rddata, 1, 5, 5); // TOP_REG_SSC_EXTPULSE
 			rddata = modified_bits_by_value(rddata, 1, 6, 6); // ssc_syn_fix_div
-			uart::print("SSC_BYPASS\n");
+			io::print("SSC_BYPASS\n");
 		}else{
 			//==============================================================
 			// SSC_EN =0
 			//==============================================================
-			uart::print("SSC_EN =0\n");
+			io::print("SSC_EN =0\n");
 			rddata = reg_set; // TOP_REG_SSC_SET
 			mmio_write_32!(0x54 + 0x03002900, rddata);
 			rddata = get_bits_from_value(reg_span, 15, 0); // TOP_REG_SSC_SPAN
@@ -2066,10 +2066,10 @@ unsafe fn cvx16_clk_normal() {
 			rddata = modified_bits_by_value(rddata, 1, 5, 5); // TOP_REG_SSC_EXTPULSE
 			rddata = modified_bits_by_value(rddata, 0, 6, 6); // ssc_syn_fix_div
 			mmio_write_32!(0x50 + 0x03002900, rddata);
-			uart::print("SSC_OFF\n");
+			io::print("SSC_OFF\n");
 		} // SSC_BYPASS
 	} // SSC_EN
-	uart::print("back to original frequency\n");
+	io::print("back to original frequency\n");
 }
 
 unsafe fn cvx16_dll_cal(){
@@ -2078,9 +2078,9 @@ unsafe fn cvx16_dll_cal(){
 	let mut CUR_PLL_SPEED: u32;
 	let mut NEXT_PLL_SPEED: u32;
 
-	uart::print("Do DLLCAL ...\n");
+	io::print("Do DLLCAL ...\n");
 
-	// uart::print("%s\n", __func__);
+	// io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x2b);
 	// ddr_debug_num_write();
 	// TOP_REG_EN_PLL_SPEED_CHG
@@ -2093,7 +2093,7 @@ unsafe fn cvx16_dll_cal(){
 	EN_PLL_SPEED_CHG = get_bits_from_value(rddata, 0, 0);
 	CUR_PLL_SPEED = get_bits_from_value(rddata, 5, 4);
 	NEXT_PLL_SPEED = get_bits_from_value(rddata, 9, 8);
-	// uart::print("CUR_PLL_SPEED = %x, NEXT_PLL_SPEED = %x, EN_PLL_SPEED_CHG=%x\n", CUR_PLL_SPEED, NEXT_PLL_SPEED,
+	// io::print("CUR_PLL_SPEED = %x, NEXT_PLL_SPEED = %x, EN_PLL_SPEED_CHG=%x\n", CUR_PLL_SPEED, NEXT_PLL_SPEED,
 	//        EN_PLL_SPEED_CHG);
 
 	if (CUR_PLL_SPEED != 0) { // only do calibration and update when high speed
@@ -2113,11 +2113,11 @@ unsafe fn cvx16_dll_cal(){
 		while (get_bits_from_value(rddata, 16, 16) == 0) {
 			rddata = mmio_read_32!(0x3014 + PHYD_BASE_ADDR);
 		}
-		uart::print("DLL lock !\n");
+		io::print("DLL lock !\n");
 
-		uart::print("DLL lock\n");
+		io::print("DLL lock\n");
 		// opdelay(1000);
-		uart::print("Do DLLUPD\n");
+		io::print("Do DLLUPD\n");
 		// cvx16_dll_cal_status();
 	} else { // stop calibration and update when low speed
 		// param_phyd_dll_rx_start_cal <= int_regin[1];
@@ -2127,15 +2127,15 @@ unsafe fn cvx16_dll_cal(){
 		rddata = modified_bits_by_value(rddata, 0, 17, 17);
 		mmio_write_32!(0x0040 + PHYD_BASE_ADDR, rddata);
 	}
-	uart::print("Do DLLCAL Finish\n");
+	io::print("Do DLLCAL Finish\n");
 
-	uart::print("Do DLLCAL Finish\n");
+	io::print("Do DLLCAL Finish\n");
 }
 
 
 unsafe fn cvx16_set_dfi_init_complete(){
     let mut rddata;
-	// uart::print("%s\n", __func__);
+	// io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x48);
 	// ddr_debug_num_write();
 // #ifdef REAL_LOCK
@@ -2144,7 +2144,7 @@ unsafe fn cvx16_set_dfi_init_complete(){
 	// rddata[8] = 1;
 	rddata = 0x00000010;
 	mmio_write_32!(0x0120 + PHYD_BASE_ADDR, rddata);
-	uart::print("set init_complete = 1 ...\n");
+	io::print("set init_complete = 1 ...\n");
 
 	// param_phyd_clkctrl_init_complete   <= int_regin[0];
 	rddata = 0x00000001;
@@ -2155,7 +2155,7 @@ unsafe fn cvx16_set_dfi_init_complete(){
 unsafe fn cvx16_ddr_phy_power_on_seq3() {
     let mut rddata;
     	// power on 3
-	// uart::print("%s\n", __func__);
+	// io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x10);
 	// ddr_debug_num_write();
 	// RESETYZ/CKE OENZ
@@ -2168,7 +2168,7 @@ unsafe fn cvx16_ddr_phy_power_on_seq3() {
 	// param_phyd_tx_ca_clk1_oenz     <= `PI_SD int_regin[16];
 	rddata = 0x00000000;
 	mmio_write_32!(0x0130 + PHYD_BASE_ADDR, rddata);
-	uart::print("[KC Info] --> ca_oenz  ca_clk_oenz !!!\n");
+	io::print("[KC Info] --> ca_oenz  ca_clk_oenz !!!\n");
 
 	// clock gated for power save
 	// param_phya_reg_tx_byte0_en_extend_oenz_gated_dline <= `PI_SD int_regin[0];
@@ -2181,14 +2181,14 @@ unsafe fn cvx16_ddr_phy_power_on_seq3() {
 	rddata = mmio_read_32!(0x0224 + PHYD_BASE_ADDR);
 	rddata = modified_bits_by_value(rddata, 1, 18, 18);
 	mmio_write_32!(0x0224 + PHYD_BASE_ADDR, rddata);
-	uart::print("[KC Info] --> en clock gated for power save !!!\n");
+	io::print("[KC Info] --> en clock gated for power save !!!\n");
 
 	// power on 3
 }
 
 unsafe fn cvx16_wait_for_dfi_init_complete() {
     let mut rddata;
-    // uart::print("%s\n", __func__);
+    // io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x13);
 	// ddr_debug_num_write();
 	// synp setting
@@ -2204,18 +2204,18 @@ unsafe fn cvx16_wait_for_dfi_init_complete() {
 	rddata = modified_bits_by_value(rddata, 5, 5, 0);
 	mmio_write_32!(cfg_base + 0x000001b0, rddata);
 	mmio_write_32!(cfg_base + 0x00000320, 0x00000001);
-	uart::print("dfi_init_complete finish\n");
+	io::print("dfi_init_complete finish\n");
 }
 
 unsafe fn cvx16_polling_synp_normal_mode() {
     let mut rddata;
-    // uart::print("%s\n", __func__);
+    // io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x14);
 	// ddr_debug_num_write();
 	// synp ctrl operating_mode
 	loop {
 		rddata = mmio_read_32!(cfg_base + 0x00000004);
-		// uart::print("operating_mode = %x\n", get_bits_from_value(rddata, 2, 0));
+		// io::print("operating_mode = %x\n", get_bits_from_value(rddata, 2, 0));
 
 		if get_bits_from_value(rddata, 2, 0) == 1 {
 			break;
@@ -2242,7 +2242,7 @@ unsafe fn cvx16_rdglvl_req() {
 	// Poll PSTAT.wr_port_busy_n = 0
 	loop {
 		rddata = mmio_read_32!(cfg_base + 0x3fc);
-		uart::print("Poll PSTAT.rd_port_busy_n =0\n");
+		io::print("Poll PSTAT.rd_port_busy_n =0\n");
 
 		if (rddata == 0) {
 			break;
@@ -2304,7 +2304,7 @@ unsafe fn cvx16_rdglvl_req() {
 	rddata = mmio_read_32!(0x0184 + PHYD_BASE_ADDR);
 	rddata = modified_bits_by_value(rddata, 1, 0, 0); // param_phyd_dfi_rdglvl_req
 	mmio_write_32!(0x0184 + PHYD_BASE_ADDR, rddata);
-	uart::print("wait retraining finish ...\n");
+	io::print("wait retraining finish ...\n");
 
 	loop {
 		//[0] param_phyd_dfi_wrlvl_done
@@ -2384,7 +2384,7 @@ unsafe fn cvx16_wdqlvl_req(data_mode: u32, lvl_mode: u32) {
 	// Poll PSTAT.wr_port_busy_n = 0
 	loop {
 		rddata = mmio_read_32!(cfg_base + 0x3fc);
-		uart::print("Poll PSTAT.rd_port_busy_n =0\n");
+		io::print("Poll PSTAT.rd_port_busy_n =0\n");
 
 		if (rddata == 0) {
 			break;
@@ -2404,11 +2404,11 @@ unsafe fn cvx16_wdqlvl_req(data_mode: u32, lvl_mode: u32) {
 	rddata = modified_bits_by_value(rddata, 0, 0, 0); // PWRCTL.selfref_en
 	mmio_write_32!(cfg_base + 0x30, rddata);
 	cvx16_clk_gating_disable();
-	uart::print("cvx16_wdqlvl_req\n");
+	io::print("cvx16_wdqlvl_req\n");
 	// ddr_debug_wr32(0x31);
 	// ddr_debug_num_write();
 	cvx16_dfi_ca_park_prbs(1);
-	uart::print("cvx16_wdqlvl_req\n");
+	io::print("cvx16_wdqlvl_req\n");
 
 	// param_phyd_piwdqlvl_dq_mode
 	//     <= #RD (~pwstrb_mask[12] & param_phyd_piwdqlvl_dq_mode) |  pwstrb_mask_pwdata[12];
@@ -2444,7 +2444,7 @@ unsafe fn cvx16_wdqlvl_req(data_mode: u32, lvl_mode: u32) {
 		//         cvx16_bist_wdqlvl_init(data_mode, sram_sp);
 		cvx16_bist_wdqlvl_init(data_mode);
 	}
-	uart::print("cvx16_wdqlvl_req\n");
+	io::print("cvx16_wdqlvl_req\n");
 	// ddr_debug_wr32(0x31);
 	// ddr_debug_num_write();
 	rddata = mmio_read_32!(0x018C + PHYD_BASE_ADDR);
@@ -2460,7 +2460,7 @@ unsafe fn cvx16_wdqlvl_req(data_mode: u32, lvl_mode: u32) {
 		rddata = modified_bits_by_value(rddata, 0, 4, 4); // param_phyd_dfi_wdqlvl_bist_data_en
 	}
 	mmio_write_32!(0x018C + PHYD_BASE_ADDR, rddata);
-	uart::print("wait retraining finish ...\n");
+	io::print("wait retraining finish ...\n");
 
 	loop {
 		//[0] param_phyd_dfi_wrlvl_done
@@ -2523,7 +2523,7 @@ unsafe fn cvx16_clk_gating_disable() {
 	rddata = modified_bits_by_value(rddata, 0, 23, 23);
 	rddata = modified_bits_by_value(rddata, 0, 31, 31);
 	mmio_write_32!(cfg_base + 0x148, rddata);
-	uart::print("clk_gating_disable\n");
+	io::print("clk_gating_disable\n");
 
 	// disable clock gating
 	// mmio_write_32!(0x0800_a000 + 0x14 , 0x00000fff);
@@ -2562,7 +2562,7 @@ unsafe fn cvx16_rdlvl_req(mode: u32) {
 	// Poll PSTAT.wr_port_busy_n = 0
 	loop {
 		rddata = mmio_read_32!(cfg_base + 0x3fc);
-		uart::print("Poll PSTAT.rd_port_busy_n =0\n");
+		io::print("Poll PSTAT.rd_port_busy_n =0\n");
 
 		if (rddata == 0) {
 			break;
@@ -2586,11 +2586,11 @@ unsafe fn cvx16_rdlvl_req(mode: u32) {
 	//    rddata = mmio_read_32!(cfg_base + 0x60);
 	//    rddata=modified_bits_by_value(rddata, 1, 0, 0); //RFSHCTL3.dis_auto_refresh
 	//    mmio_write_32!(cfg_base + 0x60, rddata);
-	// uart::print("%s\n", __func__);
+	// io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x30);
 	// ddr_debug_num_write();
 	cvx16_dfi_ca_park_prbs(1);
-	// uart::print("%s\n", __func__);
+	// io::print("%s\n", __func__);
 
 	//deskew start from 0x20
 	rddata = mmio_read_32!(0x0080 + PHYD_BASE_ADDR);
@@ -2640,9 +2640,9 @@ unsafe fn cvx16_rdlvl_req(mode: u32) {
 	rddata = mmio_read_32!(0x0188 + PHYD_BASE_ADDR);
 	rddata = modified_bits_by_value(rddata, 1, 0, 0); // param_phyd_dfi_rdlvl_req
 	mmio_write_32!(0x0188 + PHYD_BASE_ADDR, rddata);
-	uart::print("dfi_rdlvl_req 1\n");
+	io::print("dfi_rdlvl_req 1\n");
 
-	uart::print("wait retraining finish ...\n");
+	io::print("wait retraining finish ...\n");
 
 	loop {
 		//[0] param_phyd_dfi_wrlvl_done
@@ -2659,14 +2659,14 @@ unsafe fn cvx16_rdlvl_req(mode: u32) {
 		rddata = modified_bits_by_value(rddata, 0, 2, 2); // param_phyd_pirdlvl_vref_training_en
 		mmio_write_32!(0x008c + PHYD_BASE_ADDR, rddata);
 		// final training, keep rx trig_lvl
-		uart::print("final training, keep rx trig_lvl\n");
+		io::print("final training, keep rx trig_lvl\n");
 
 		rddata = mmio_read_32!(0x0188 + PHYD_BASE_ADDR);
 		rddata = modified_bits_by_value(rddata, 1, 0, 0); // param_phyd_dfi_rdlvl_req
 		mmio_write_32!(0x0188 + PHYD_BASE_ADDR, rddata);
-		uart::print("dfi_rdlvl_req 2\n");
+		io::print("dfi_rdlvl_req 2\n");
 
-		uart::print("wait retraining finish ...\n");
+		io::print("wait retraining finish ...\n");
 
 		loop {
 			//[0] param_phyd_dfi_wrlvl_done
@@ -2694,7 +2694,7 @@ unsafe fn cvx16_rdlvl_req(mode: u32) {
 		rddata = modified_bits_by_value(rddata, 0, 0, 0); // RFSHCTL3.dis_auto_refresh
 		mmio_write_32!(cfg_base + 0x60, rddata);
 	}
-	// uart::print("%s\n", __func__);
+	// io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x30);
 	// ddr_debug_num_write();
 // #endif
@@ -2710,7 +2710,7 @@ unsafe fn cvx16_rdlvl_req(mode: u32) {
 // 			rddata = modified_bits_by_value(rddata, 0, 0, 0); // RFSHCTL3.dis_auto_refresh
 // 			mmio_write_32!(cfg_base + 0x60, rddata);
 // 		}
-// 		uart::print("%s\n", __func__);
+// 		io::print("%s\n", __func__);
 // 		ddr_debug_wr32(0x30);
 // 		ddr_debug_num_write();
 // 	}
@@ -2744,9 +2744,9 @@ unsafe fn cvx16_rdlvl_req(mode: u32) {
 
 unsafe fn cvx16_dram_cap_check(dram_cap_in_mbyte: u8) {
     if (dram_cap_in_mbyte == 9) {
-		uart::print("dram_cap_check = 4Gb (512MB)\n");
+		io::print("dram_cap_check = 4Gb (512MB)\n");
 	} else {
-		// uart::print("dram_cap_check ERROR !!! size = %x\n", size);
+		// io::print("dram_cap_check ERROR !!! size = %x\n", size);
 	}
 }
 
@@ -2797,7 +2797,7 @@ unsafe fn ctrl_init_detect_dram_size() -> u8 {
 	while {
 		// *dram_cap_in_mbyte++;
 		cap_in_mbyte += 1;
-		// uart::print("cap_in_mbyte =  %x\n", cap_in_mbyte);
+		// io::print("cap_in_mbyte =  %x\n", cap_in_mbyte);
 
 		// write ~PRBS to (0x1 << *dram_cap_in_mbyte) {{{
 
@@ -2901,7 +2901,7 @@ unsafe fn ctrl_init_detect_dram_size() -> u8 {
 // 		do {
 // 			// *dram_cap_in_mbyte++;
 // 			cap_in_mbyte++;
-// 			uart::print("cap_in_mbyte =  %x\n", cap_in_mbyte);
+// 			io::print("cap_in_mbyte =  %x\n", cap_in_mbyte);
 
 // 			// write ~PRBS to (0x1 << *dram_cap_in_mbyte) {{{
 
@@ -2970,7 +2970,7 @@ unsafe fn ctrl_init_detect_dram_size() -> u8 {
 
 unsafe fn cvx16_clk_gating_enable() {
     let mut rddata;
-    // uart::print("%s\n", __func__);
+    // io::print("%s\n", __func__);
 	// ddr_debug_wr32(0x4D);
 	// ddr_debug_num_write();
 	// TOP_REG_CG_EN_PHYD_TOP      0
@@ -3005,11 +3005,11 @@ unsafe fn cvx16_clk_gating_enable() {
 	rddata = modified_bits_by_value(rddata, 1, 23, 23);
 	rddata = modified_bits_by_value(rddata, 1, 31, 31);
 	mmio_write_32!(cfg_base + 0x148, rddata);
-	uart::print("clk_gating_enable\n");
+	io::print("clk_gating_enable\n");
 
 	// disable clock gating
 	// mmio_write_32!(0x0800_a000 + 0x14 , 0x00000fff);
-	// uart::print("axi disable clock gating\n");
+	// io::print("axi disable clock gating\n");
 }
 
 unsafe fn cvx16_en_rec_vol_mode() {
@@ -3017,7 +3017,7 @@ unsafe fn cvx16_en_rec_vol_mode() {
 		let rddata = 0x00001001;
 		mmio_write_32!(0x0500 + PHYD_BASE_ADDR, rddata);
 		mmio_write_32!(0x0540 + PHYD_BASE_ADDR, rddata);
-		uart::print("cvx16_en_rec_vol_mode done\n");
+		io::print("cvx16_en_rec_vol_mode done\n");
 	}
 }
 

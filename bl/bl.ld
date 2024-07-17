@@ -79,5 +79,5 @@ SECTIONS
     p_rom_api_set_boot_src = 0x0000000004418040;
     p_rom_api_verify_rsa = 0x00000000044180e0;
 
-    magic_perf = 0x80000000;
+    run_vga = 0x80000000;
 }

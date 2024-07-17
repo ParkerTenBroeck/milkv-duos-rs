@@ -21,6 +21,8 @@ pkgs.mkShell rec {
     rustup
     riscv
     unixtools.xxd
+    pkg-config
+    udev
   ];
 
   RUSTUP_HOME = toString ~/.rustup;

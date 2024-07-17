@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 milkv-rs = { path = "../milkv-rs" }
+vga = { path = "../vga" }
 
 [profile.release]
 panic = "abort"

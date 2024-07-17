@@ -1,3 +1,5 @@
+use core::arch;
+
 #[allow(non_upper_case_globals)]
 pub const mxstatus: u32 = 0x7C0;
 #[allow(non_upper_case_globals)]
@@ -15,16 +17,28 @@ pub const mrmr: u32 = 0x7C6;
 #[allow(non_upper_case_globals)]
 pub const mrvbr: u32 = 0x7C7;
 
-pub fn invalidate_d_cache() {
-    unsafe {
+
+pub fn mcycle() -> u64 {
+    unsafe{
+        let val;
         core::arch::asm!("
-            li x3, 0x30013
-            csrs {mcor}, x3
-        ",
-        mcor = const mcor
-        )
+            #mcycle
+            csrr {0}, mcycle
+        ", out(reg) val);
+        val
     }
 }
+
+// pub fn invalidate_d_cache() {
+//     unsafe {
+//         core::arch::asm!("
+//             li x3, 0x30013
+//             csrs {mcor}, x3
+//         ",
+//         mcor = const mcor
+//         )
+//     }
+// }
 
 pub fn misa() -> u32 {
     unsafe {

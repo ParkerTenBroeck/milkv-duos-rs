@@ -24,41 +24,45 @@ pub const EFUSE_W_LOCK0_REG: usize = EFUSE_BASE + 0x198;
 pub const BIT_FTSN3_LOCK: usize = 3;
 pub const BIT_FTSN4_LOCK: usize = 4;
 
-pub unsafe fn lock_efuse() -> Result<(), ()> {
+pub enum EfuseError{
+    EfusePowerOnFail,
+    EfuseFtsn3LockFailed,
+    EfuseFtsn4LockFailed,
+    EfuseRefreshShadowFail,
+    LockEfuseChipsnFail,
+    EfusePowerOffFail
+}
+
+pub unsafe fn lock_efuse() -> Result<(), EfuseError> {
     let value = mmio_read_32!(EFUSE_W_LOCK0_REG);
 
     if let Err(_) = efuse_power_on() {
-        crate::uart::print("efuse power on fail\n");
-        return Err(());
+        return Err(EfuseError::EfusePowerOnFail);
     }
 
     if (value & (0x1 << BIT_FTSN3_LOCK)) == 0 {
         if let Err(_) = efuse_program_bit(0x26, BIT_FTSN3_LOCK as u32) {
-            crate::uart::print("efuse ftsn3 lock failed\n");
-            return Err(());
+            return Err(EfuseError::EfuseFtsn3LockFailed);
         }
     }
 
     if (value & (0x1 << BIT_FTSN4_LOCK)) == 0 {
         if let Err(_) = efuse_program_bit(0x26, BIT_FTSN4_LOCK as u32) {
-            crate::uart::print("efuse ftsn4 lock failed\n");
-            return Err(());
+            return Err(EfuseError::EfuseFtsn4LockFailed);
         }
     }
 
     if let Err(_) = efuse_refresh_shadow() {
-        crate::uart::print("efuse refresh shadow fail\n");
-        return Err(());
+        return Err(EfuseError::EfuseRefreshShadowFail);
     }
 
     let value = mmio_read_32!(EFUSE_W_LOCK0_REG);
     if ((value & (0x3 << BIT_FTSN3_LOCK)) >> BIT_FTSN3_LOCK) != 0x3 {
-        crate::uart::print("lock efuse chipsn fail\n");
+        return Err(EfuseError::LockEfuseChipsnFail)
     }
 
     if let Err(_) = efuse_power_off() {
-        crate::uart::print("efuse power off fail\n");
-        return Err(());
+        return Err(EfuseError::EfusePowerOffFail);
     }
 
     Ok(())

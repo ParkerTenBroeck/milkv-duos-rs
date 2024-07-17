@@ -143,6 +143,13 @@ pub fn print(msg: &str) {
     }
 }
 
+#[inline(always)]
+pub fn print_bytes(msg: &[u8]) {
+    for b in msg {
+        print_c(*b);
+    }
+}
+
 pub fn get_b() -> u8 {
     unsafe {
         let lsr = core::ptr::addr_of_mut!((*UART0).lsr);

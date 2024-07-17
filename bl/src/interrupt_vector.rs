@@ -1,16 +1,15 @@
 use core::{ptr::NonNull, sync::atomic::AtomicPtr};
 
-use milkv_rs::{plic, timer};
+use milkv_rs::{csr, plic, timer};
 
 use crate::println;
 
-
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct TrapFrame {
-	pub regs:       [usize; 32],
-	pub fregs:      [usize; 32],
-	pub satp:       usize,
+    pub ret: usize,
+    pub regs: [usize; 31],
+    pub mstatus: usize,
 }
 
 core::arch::global_asm!(
@@ -22,58 +21,60 @@ core::arch::global_asm!(
 
     .balign 4
     mtrap_vector:
-        addi sp, sp, -8 * 31
+        addi sp, sp, -8 * (31 + 1 + 1)
         sd x1, 1 * 8( sp )
-        sd x5, 2 * 8( sp )
-        sd x6, 3 * 8( sp )
-        sd x7, 4 * 8( sp )
-        sd x8, 5 * 8( sp )
-        sd x9, 6 * 8( sp )
-        sd x10, 7 * 8( sp )
-        sd x11, 8 * 8( sp )
-        sd x12, 9 * 8( sp )
-        sd x13, 10 * 8( sp )
-        sd x14, 11 * 8( sp )
-        sd x15, 12 * 8( sp )
-        sd x16, 13 * 8( sp )
-        sd x17, 14 * 8( sp )
-        sd x18, 15 * 8( sp )
-        sd x19, 16 * 8( sp )
-        sd x20, 17 * 8( sp )
-        sd x21, 18 * 8( sp )
-        sd x22, 19 * 8( sp )
-        sd x23, 20 * 8( sp )
-        sd x24, 21 * 8( sp )
-        sd x25, 22 * 8( sp )
-        sd x26, 23 * 8( sp )
-        sd x27, 24 * 8( sp )
-        sd x28, 25 * 8( sp )
-        sd x29, 26 * 8( sp )
-        sd x30, 27 * 8( sp )
-        sd x31, 28 * 8( sp )
-        sd x3,  29 * 8( sp )
-        sd x4,  30 * 8( sp )
+        # sd x2, 2 * 8( sp )
+        sd x3, 3 * 8( sp )
+        sd x4, 4 * 8( sp )
+        sd x5, 5 * 8( sp )
+        sd x6, 6 * 8( sp )
+        sd x7, 7 * 8( sp )
+        sd x8, 8 * 8( sp )
+        sd x9, 9 * 8( sp )
+        sd x10, 10 * 8( sp )
+        sd x11, 11 * 8( sp )
+        sd x12, 12 * 8( sp )
+        sd x13, 13 * 8( sp )
+        sd x14, 14 * 8( sp )
+        sd x15, 15 * 8( sp )
+        sd x16, 16 * 8( sp )
+        sd x17, 17 * 8( sp )
+        sd x18, 18 * 8( sp )
+        sd x19, 19 * 8( sp )
+        sd x20, 20 * 8( sp )
+        sd x21, 21 * 8( sp )
+        sd x22, 22 * 8( sp )
+        sd x23, 23 * 8( sp )
+        sd x24, 24 * 8( sp )
+        sd x25, 25 * 8( sp )
+        sd x26, 26 * 8( sp )
+        sd x27, 27 * 8( sp )
+        sd x28, 28 * 8( sp )
+        sd x29, 29 * 8( sp )
+        sd x30, 30 * 8( sp )
+        sd x31, 31 * 8( sp )
 
         csrr t0, mstatus
-        sd t0, 31 * 8( sp )
+        sd t0, 32 * 8( sp )
 
-        csrr a0, mcause
-        csrr a1, mepc
-        csrr a2, mtval
+        addi a0, sp, 0
+        csrr a1, mcause
+        csrr a2, mepc
+        csrr a3, mtval
 
         # test if asynchronous
-        srli a2, a0, 64 - 1		/* MSB of mcause is 1 if handing an asynchronous interrupt - shift to LSB to clear other bits. */
-        beq a2, x0, handle_synchronous		/* Branch past interrupt handing if not asynchronous. */
+        srli t0, a1, 64 - 1		/* MSB of mcause is 1 if handing an asynchronous interrupt - shift to LSB to clear other bits. */
+        beq t0, x0, handle_synchronous		/* Branch past interrupt handing if not asynchronous. */
         	
 
     handle_asynchronous:
-        sd a1, 0( sp )
+        sd a2, 0( sp )
         jal mtrap_handler
         j return
 
     handle_synchronous:
-        addi a1, a1, 4
-        sd a1, 0( sp )
+        addi a2, a2, 4
+        sd a2, 0( sp )
         jal mtrap_handler
 
 
@@ -82,41 +83,42 @@ core::arch::global_asm!(
         ld t0, 0(sp)
         csrw mepc, t0
 
-        ld t0, 31 * 8(sp)
+        ld t0, 32 * 8(sp)
         csrw mstatus, t0
 
         
         ld x1, 1 * 8( sp )
-        ld x5, 2 * 8( sp )
-        ld x6, 3 * 8( sp )
-        ld x7, 4 * 8( sp )
-        ld x8, 5 * 8( sp )
-        ld x9, 6 * 8( sp )
-        ld x10, 7 * 8( sp )
-        ld x11, 8 * 8( sp )
-        ld x12, 9 * 8( sp )
-        ld x13, 10 * 8( sp )
-        ld x14, 11 * 8( sp )
-        ld x15, 12 * 8( sp )
-        ld x16, 13 * 8( sp )
-        ld x17, 14 * 8( sp )
-        ld x18, 15 * 8( sp )
-        ld x19, 16 * 8( sp )
-        ld x20, 17 * 8( sp )
-        ld x21, 18 * 8( sp )
-        ld x22, 19 * 8( sp )
-        ld x23, 20 * 8( sp )
-        ld x24, 21 * 8( sp )
-        ld x25, 22 * 8( sp )
-        ld x26, 23 * 8( sp )
-        ld x27, 24 * 8( sp )
-        ld x28, 25 * 8( sp )
-        ld x29, 26 * 8( sp )
-        ld x30, 27 * 8( sp )
-        ld x31, 28 * 8( sp ) 
-        ld x3, 29 * 8( sp ) 
-        ld x4, 30 * 8( sp ) 
-        addi sp, sp, 8 * 31
+        # ld x2, 2 * 8( sp )
+        ld x3, 3 * 8( sp )
+        ld x4, 4 * 8( sp )
+        ld x5, 5 * 8( sp )
+        ld x6, 6 * 8( sp )
+        ld x7, 7 * 8( sp )
+        ld x8, 8 * 8( sp )
+        ld x9, 9 * 8( sp )
+        ld x10, 10 * 8( sp )
+        ld x11, 11 * 8( sp )
+        ld x12, 12 * 8( sp )
+        ld x13, 13 * 8( sp )
+        ld x14, 14 * 8( sp )
+        ld x15, 15 * 8( sp )
+        ld x16, 16 * 8( sp )
+        ld x17, 17 * 8( sp )
+        ld x18, 18 * 8( sp )
+        ld x19, 19 * 8( sp )
+        ld x20, 20 * 8( sp )
+        ld x21, 21 * 8( sp )
+        ld x22, 22 * 8( sp )
+        ld x23, 23 * 8( sp )
+        ld x24, 24 * 8( sp )
+        ld x25, 25 * 8( sp )
+        ld x26, 26 * 8( sp )
+        ld x27, 27 * 8( sp )
+        ld x28, 28 * 8( sp )
+        ld x29, 29 * 8( sp )
+        ld x30, 30 * 8( sp )
+        ld x31, 31 * 8( sp )
+        addi sp, sp, 8 * (31 + 1 + 1)
 
         mret
     "#
@@ -126,7 +128,7 @@ static PLIC_HANDLERS: [AtomicPtr<()>; milkv_rs::plic::MAX_INT_ID] =
     [const { AtomicPtr::new(core::ptr::null_mut()) }; milkv_rs::plic::MAX_INT_ID];
 
 #[no_mangle]
-pub extern "C" fn mtrap_handler(mcause: usize, mepc: usize, mtval: usize) {
+pub extern "C" fn mtrap_handler(frame: &mut TrapFrame, mcause: usize, mepc: usize, mtval: usize) {
     let sync = mcause & (1 << 63) == 0;
     let code = mcause & !(1 << 63);
     if sync {
@@ -143,7 +145,13 @@ pub extern "C" fn mtrap_handler(mcause: usize, mepc: usize, mtval: usize) {
             8 => "Env call from U-mode",
             9 => "Env call from S-mode",
             11 => {
-                println!("\nEnv call from M-mode... returning");
+                // csr::
+                println!(
+                    "\nEnv call from M-mode hardid: \"{}\"... returning",
+                    csr::mhartid()
+                );
+                println!("{:#?}", frame);
+                // timer::mdelay(6000);
                 return;
             }
             12 => "Instruction page fault",
