@@ -3,7 +3,7 @@
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Out<'a> {
     Ansi(Ansi<'a>),
-    Data(u8),
+    Data(char),
     None,
 }
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -17,39 +17,72 @@ pub enum Ansi<'a> {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum C0 {
-    Null = 0,
-    StartOfHeating = 1,
-    StartOfText = 2,
-    EndOfText = 3,
-    EndOfTransmission = 4,
-    ReturnTerminalStatus = 5,
-    Acknowledge = 6,
-    Bell = 7,
-    Backspace = 8,
-    HorizontalTab = 9,
-    LineFeed = 10,
-    VerticalTab = 11,
-    FormFeed = 12,
-    CarriageReturn = 13,
-    SwitchToAlternateCharacterSet = 14,
-    SwitchToStandardCharacterSet = 15,
-    DataLinkEscape = 16,
-    DeviceControlOne = 17,
-    DeviceControlTwo = 18,
-    DeviceControlThree = 19,
-    DeviceControlFour = 20,
-    NegativeAcknowledge = 21,
-    SynchronusIdle = 22,
-    EndOfTransmissionBlock = 23,
-    Cancel = 24,
-    EndOfMedium = 25,
-    Substitude = 26,
-    FileSeparator = 28,
-    GroupSeparator = 29,
-    RecordSeparator = 30,
-    UnitSeparator = 31,
-    Space = 32,
-    Delete = 127,
+    /// Null
+    NUL = 0,
+    /// Start of Heading
+    SOH = 1,
+    /// Start of Text
+    STX = 2,
+    /// End of Text
+    ETX = 3,
+    /// End of Transmission
+    EOT = 4,
+    /// Enquiry (Terminal status / present)
+    ENQ = 5,
+    /// Acknowledge
+    ACK = 6,
+    /// Bell, Alert
+    BEL= 7,
+    /// Backspace
+    BS = 8,
+    /// Character/Horizontal Tabulation
+    HT = 9,
+    /// Line Feed
+    LF = 10,
+    /// Line/Vertical Tabulation
+    VT = 11,
+    /// Form Feed
+    FF = 12,
+    /// Carriage Return
+    CR = 13,
+    /// Shift Out (Switch to an alternative character set)
+    SO = 14,
+    /// Shift In (Switch to regular character set)
+    SI = 15,
+    /// Data Link Escape
+    DLE= 16,
+    /// Device Control One
+    DC1 = 17,
+    /// Device Control Two
+    DC2 = 18,
+    /// Drvice Control Three
+    DC3 = 19,
+    /// Device Control Four
+    DC4 = 20,
+    /// Negative Acknowledge
+    NAK = 21,
+    /// Synchronous Idle
+    SYN = 22,
+    /// End of Tranmission Block
+    ETB = 23,
+    /// Cancel
+    CAN = 24,
+    /// End of Medium
+    EM = 25,
+    /// Substitude
+    SUB = 26,
+    /// File Separator
+    FS = 28,
+    /// Group Separator
+    GS = 29,
+    /// Record Separator
+    RS = 30,
+    /// Unit Separator
+    US = 31,
+    /// Space
+    SP = 32,
+    /// Delete
+    DEL = 127,
 }
 
 #[allow(non_camel_case_types)]
@@ -65,7 +98,7 @@ pub enum C1<'a> {
     /// 0x60-0x7E,
     Fs(Fs),
     /// Not nF, Fp, Fe, Fs
-    Invalid(u8),
+    Invalid(char),
 }
 
 #[allow(non_camel_case_types)]
@@ -95,76 +128,76 @@ pub enum Fp {
 
 /// A sequence starting with 0x1b with a character in the range 0x40-0x5F following
 pub enum Fe<'a> {
-    /// b'@' Padding Character
+    /// '@' Padding Character
     PAD,
-    /// b'A' High Octet Preset
+    /// 'A' High Octet Preset
     HOP,
-    /// b'B' Break Permitted Here
+    /// '' Break Permitted Here
     BPH,
-    /// b'C' No Break Here
+    /// 'C' No Break Here
     NBH,
-    /// b'D' Index
+    /// 'D' Index
     IND,
-    /// b'E' Next Line
+    /// 'E' Next Line
     NEL,
-    /// b'F' Start of Selected Area
+    /// 'F' Start of Selected Area
     SSA,
-    /// b'G' End of Selected Area
+    /// 'G' End of Selected Area
     ESA,
-    /// b'H' Character Tabulation Set/Horizontal Tabulation Set
+    /// 'H' Character Tabulation Set/Horizontal Tabulation Set
     HTS,
-    /// b'I' Character Tabulation With Justification/Horizontal Tabulation With Justification
+    /// 'I' Character Tabulation With Justification/Horizontal Tabulation With Justification
     HTJ,
-    /// b'J' Line Tabulation Set/Vertical Tabulation Set
+    /// 'J' Line Tabulation Set/Vertical Tabulation Set
     VTS,
-    /// b'K' Partial Line Forward/Partial Line Down
+    /// 'K' Partial Line Forward/Partial Line Down
     PLD,
-    /// b'L' Partial Line Backward/Partial Line Up
+    /// 'L' Partial Line Backward/Partial Line Up
     PLU,
-    /// b'M' Reverse Line Feed/Reverse Index
+    /// 'M' Reverse Line Feed/Reverse Index
     RI,
-    /// b'N' Single-Shift 2
+    /// 'N' Single-Shift 2
     SS2,
-    /// b'O' Single-Shift 3
+    /// 'O' Single-Shift 3
     SS3,
-    /// b'P' Device Control String
+    /// 'P' Device Control String
     DCS,
-    /// b'Q' Private Use 1
+    /// 'Q' Private Use 1
     PU1,
-    /// b'R' Private Use 2
+    /// 'R' Private Use 2
     PU2,
-    /// b'S' Set Transmit State
+    /// 'S' Set Transmit State
     STS,
-    /// b'T' Cancel character
+    /// 'T' Cancel character
     CCH,
-    /// b'U' Message Waiting
+    /// 'U' Message Waiting
     MW,
-    /// b'V' Start of Protected Area
+    /// 'V' Start of Protected Area
     SPA,
-    /// b'W' End of Protected Area
+    /// 'W' End of Protected Area
     EPA,
-    /// b'X' Start of String
+    /// 'X' Start of String
     SOS,
-    /// b'Y' Single Graphic Character Introducer
+    /// 'Y' Single Graphic Character Introducer
     SGCI,
-    /// b'Z' Single Character Introducer
+    /// 'Z' Single Character Introducer
     SCI,
-    /// b'[' Control Sequence Introducer [CSI]
+    /// '[' Control Sequence Introducer [CSI]
     CSI(CSI<'a>),
-    /// b'\' String Terminator
+    /// '\' String Terminator
     ST,
-    /// b']' Operating System Command
+    /// ']' Operating System Command
     OSC,
-    /// b'^' Privacy Message
+    /// '^' Privacy Message
     PM,
-    /// b'_' Application Program Command
+    /// '_' Application Program Command
     APC,
 
-    DCSData(u8),
-    SData(u8),
-    PMData(u8),
-    APCData(u8),
-    OSData(u8),
+    DCSData(char),
+    SData(char),
+    PMData(char),
+    APCData(char),
+    OSData(char),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -268,7 +301,7 @@ pub enum CSI<'a> {
     Unknown{
         sequence: &'a[u16], 
         modifier: CsiMod,
-        end: u8
+        end: char
     }
 }
 
@@ -551,7 +584,7 @@ enum State {
     Default,
     Escape,
     CsiStart,
-    CSI,
+    Csi,
 
     String(StringKind),
     StringEcp(StringKind)
@@ -563,19 +596,20 @@ enum InvalidKind{
     SequenceTooLarge,
 }
 
-union Buf<const U16: usize, const U8: usize>{
-    nums: [u16; U16],
-    buf: [u8; U8]
-}
-
-pub struct AnsiParser<const CSI_MAX: usize = 32, const STR_MAX: usize = 64> {
+pub struct AnsiParser<const CSI_MAX: usize = 32> {
     state: State,
     curr: u8,
     size: u8,
     nums: [u16; CSI_MAX],
     mode: CsiMod,
     invalid: InvalidKind,
-    string_extra_byte: Option<u8>,
+    string_extra_char: Option<char>,
+}
+
+impl<const CSI_MAX: usize> core::default::Default for AnsiParser<CSI_MAX>{
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<const N: usize> AnsiParser<N> {
@@ -587,41 +621,41 @@ impl<const N: usize> AnsiParser<N> {
             nums: [0; N],
             mode: CsiMod::Standard,
             invalid: InvalidKind::Ok,
-            string_extra_byte: None,
+            string_extra_char: None,
         }
     }
 
-    pub fn next(&mut self, input: u8) -> Out {
+    pub fn next(&mut self, input: char) -> Out {
         match self.state {
-            State::Default => Out::Ansi(Ansi::C0(match input {
-                0 => C0::Null,
-                1 => C0::StartOfHeating,
-                2 => C0::StartOfText,
-                3 => C0::EndOfText,
-                4 => C0::EndOfTransmission,
-                5 => C0::ReturnTerminalStatus,
-                6 => C0::Acknowledge,
-                7 => C0::Bell,
-                8 => C0::Backspace,
-                9 => C0::HorizontalTab,
-                10 => C0::LineFeed,
-                11 => C0::VerticalTab,
-                12 => C0::FormFeed,
-                13 => C0::CarriageReturn,
-                14 => C0::SwitchToAlternateCharacterSet,
-                15 => C0::SwitchToStandardCharacterSet,
-                16 => C0::DataLinkEscape,
-                17 => C0::DeviceControlOne,
-                18 => C0::DeviceControlTwo,
-                19 => C0::DeviceControlThree,
-                20 => C0::DeviceControlFour,
-                21 => C0::NegativeAcknowledge,
-                22 => C0::SynchronusIdle,
-                23 => C0::EndOfTransmissionBlock,
-                24 => C0::Cancel,
-                25 => C0::EndOfMedium,
-                26 => C0::Substitude,
-                b'\x1b' => {
+            State::Default => Out::Ansi(Ansi::C0(match input as u32 {
+                0 => C0::NUL,
+                1 => C0::SOH,
+                2 => C0::STX,
+                3 => C0::ETX,
+                4 => C0::EOT,
+                5 => C0::ENQ,
+                6 => C0::ACK,
+                7 => C0::BEL,
+                8 => C0::BS,
+                9 => C0::HT,
+                10 => C0::LF,
+                11 => C0::VT,
+                12 => C0::FF,
+                13 => C0::CR,
+                14 => C0::SO,
+                15 => C0::SI,
+                16 => C0::DLE,
+                17 => C0::DC1,
+                18 => C0::DC2,
+                19 => C0::DC3,
+                20 => C0::DC4,
+                21 => C0::NAK,
+                22 => C0::SI,
+                23 => C0::ETB,
+                24 => C0::CAN,
+                25 => C0::EM,
+                26 => C0::SUB,
+                0x1b => {
                     self.state = State::Escape;
                     self.size = 0;
                     self.curr = 0;
@@ -629,191 +663,197 @@ impl<const N: usize> AnsiParser<N> {
                     self.invalid = InvalidKind::Ok;
                     return Out::None;
                 }
-                28 => C0::FileSeparator,
-                29 => C0::GroupSeparator,
-                30 => C0::RecordSeparator,
-                31 => C0::UnitSeparator,
-                32 => C0::Space,
-                127 => C0::Delete,
-                c => return Out::Data(c),
+                28 => C0::FS,
+                29 => C0::GS,
+                30 => C0::RS,
+                31 => C0::US,
+                32 => C0::SP,
+                127 => C0::DEL,
+                _ => return Out::Data(input),
             })),
-            State::Escape => match input {
-                c @ 0x20..=0x2F => {
+            State::Escape => match input as u32 {
+                0x20..=0x2F => {
                     // nF
                     self.state = State::Default;
-                    match c {
-                        b' ' => {}
-                        b'!' => {}
-                        b'"' => {}
-                        b'#' => {}
-                        b'$' => {}
-                        b'%' => {}
-                        b'&' => {}
-                        b'\'' => {}
-                        b'(' => {}
-                        b')' => {}
-                        b'*' => {}
-                        b'+' => {}
-                        b',' => {}
-                        b'-' => {}
-                        b'.' => {}
-                        b'/' => {}
+                    match input {
+                        ' ' => {}
+                        '!' => {}
+                        '"' => {}
+                        '#' => {}
+                        '$' => {}
+                        '%' => {}
+                        '&' => {}
+                        '\'' => {}
+                        '(' => {}
+                        ')' => {}
+                        '*' => {}
+                        '+' => {}
+                        ',' => {}
+                        '-' => {}
+                        '.' => {}
+                        '/' => {}
                         _ => unreachable!()
                     }
                     Out::None
                 }
-                c @ 0x30..=0x3F => {
+                0x30..=0x3F => {
                     // Fp
                     self.state = State::Default;
-                    Out::Ansi(Ansi::C1(C1::Fp(match c {
-                        b'0' => Fp::Unknown(c),
-                        b'1' => Fp::Unknown(c),
-                        b'2' => Fp::Unknown(c),
-                        b'3' => Fp::Unknown(c),
-                        b'4' => Fp::Unknown(c),
-                        b'5' => Fp::Unknown(c),
-                        b'6' => Fp::Unknown(c),
-                        b'7' => Fp::DECSC,
-                        b'8' => Fp::DECRC,
-                        b'9' => Fp::DECFI,
-                        b':' => Fp::Unknown(c),
-                        b';' => Fp::Unknown(c),
-                        b'<' => Fp::Unknown(c),
-                        b'=' => Fp::DECKPAM,
-                        b'>' => Fp::DECKPNM,
-                        b'?' => Fp::Unknown(c),
+                    Out::Ansi(Ansi::C1(C1::Fp(match input {
+                        '0' => Fp::Unknown(input as u8),
+                        '1' => Fp::Unknown(input as u8),
+                        '2' => Fp::Unknown(input as u8),
+                        '3' => Fp::Unknown(input as u8),
+                        '4' => Fp::Unknown(input as u8),
+                        '5' => Fp::Unknown(input as u8),
+                        '6' => Fp::Unknown(input as u8),
+                        '7' => Fp::DECSC,
+                        '8' => Fp::DECRC,
+                        '9' => Fp::DECFI,
+                        ':' => Fp::Unknown(input as u8),
+                        ';' => Fp::Unknown(input as u8),
+                        '<' => Fp::Unknown(input as u8),
+                        '=' => Fp::DECKPAM,
+                        '>' => Fp::DECKPNM,
+                        '?' => Fp::Unknown(input as u8),
                         _ => unreachable!(),
                     })))
                 }
-                c @ 0x40..=0x5F => {
+                0x40..=0x5F => {
                     // Fe
                     self.state = State::Default;
-                    match c {
-                        b'@' => Out::Ansi(Ansi::C1(C1::Fe(Fe::PAD))),
-                        b'A' => Out::Ansi(Ansi::C1(C1::Fe(Fe::HOP))),
-                        b'B' => Out::Ansi(Ansi::C1(C1::Fe(Fe::BPH))),
-                        b'C' => Out::Ansi(Ansi::C1(C1::Fe(Fe::NBH))),
-                        b'D' => Out::Ansi(Ansi::C1(C1::Fe(Fe::IND))),
-                        b'E' => Out::Ansi(Ansi::C1(C1::Fe(Fe::NEL))),
-                        b'F' => Out::Ansi(Ansi::C1(C1::Fe(Fe::SSA))),
-                        b'G' => Out::Ansi(Ansi::C1(C1::Fe(Fe::ESA))),
-                        b'H' => Out::Ansi(Ansi::C1(C1::Fe(Fe::HTS))),
-                        b'I' => Out::Ansi(Ansi::C1(C1::Fe(Fe::HTJ))),
-                        b'J' => Out::Ansi(Ansi::C1(C1::Fe(Fe::VTS))),
-                        b'K' => Out::Ansi(Ansi::C1(C1::Fe(Fe::PLD))),
-                        b'L' => Out::Ansi(Ansi::C1(C1::Fe(Fe::PLU))),
-                        b'M' => Out::Ansi(Ansi::C1(C1::Fe(Fe::RI))),
-                        b'N' => Out::Ansi(Ansi::C1(C1::Fe(Fe::SS2))),
-                        b'O' => Out::Ansi(Ansi::C1(C1::Fe(Fe::SS3))),
-                        b'P' => {
+                    match input {
+                        '@' => Out::Ansi(Ansi::C1(C1::Fe(Fe::PAD))),
+                        'A' => Out::Ansi(Ansi::C1(C1::Fe(Fe::HOP))),
+                        'B' => Out::Ansi(Ansi::C1(C1::Fe(Fe::BPH))),
+                        'C' => Out::Ansi(Ansi::C1(C1::Fe(Fe::NBH))),
+                        'D' => Out::Ansi(Ansi::C1(C1::Fe(Fe::IND))),
+                        'E' => Out::Ansi(Ansi::C1(C1::Fe(Fe::NEL))),
+                        'F' => Out::Ansi(Ansi::C1(C1::Fe(Fe::SSA))),
+                        'G' => Out::Ansi(Ansi::C1(C1::Fe(Fe::ESA))),
+                        'H' => Out::Ansi(Ansi::C1(C1::Fe(Fe::HTS))),
+                        'I' => Out::Ansi(Ansi::C1(C1::Fe(Fe::HTJ))),
+                        'J' => Out::Ansi(Ansi::C1(C1::Fe(Fe::VTS))),
+                        'K' => Out::Ansi(Ansi::C1(C1::Fe(Fe::PLD))),
+                        'L' => Out::Ansi(Ansi::C1(C1::Fe(Fe::PLU))),
+                        'M' => Out::Ansi(Ansi::C1(C1::Fe(Fe::RI))),
+                        'N' => Out::Ansi(Ansi::C1(C1::Fe(Fe::SS2))),
+                        'O' => Out::Ansi(Ansi::C1(C1::Fe(Fe::SS3))),
+                        'P' => {
                             self.state = State::String(StringKind::DeviceControl);
                             Out::Ansi(Ansi::C1(C1::Fe(Fe::DCS)))
                         },
-                        b'Q' => Out::Ansi(Ansi::C1(C1::Fe(Fe::PU1))),
-                        b'R' => Out::Ansi(Ansi::C1(C1::Fe(Fe::PU2))),
-                        b'S' => Out::Ansi(Ansi::C1(C1::Fe(Fe::STS))),
-                        b'T' => Out::Ansi(Ansi::C1(C1::Fe(Fe::CCH))),
-                        b'U' => Out::Ansi(Ansi::C1(C1::Fe(Fe::MW))),
-                        b'V' => Out::Ansi(Ansi::C1(C1::Fe(Fe::SPA))),
-                        b'W' => Out::Ansi(Ansi::C1(C1::Fe(Fe::EPA))),
-                        b'X' => {
+                        'Q' => Out::Ansi(Ansi::C1(C1::Fe(Fe::PU1))),
+                        'R' => Out::Ansi(Ansi::C1(C1::Fe(Fe::PU2))),
+                        'S' => Out::Ansi(Ansi::C1(C1::Fe(Fe::STS))),
+                        'T' => Out::Ansi(Ansi::C1(C1::Fe(Fe::CCH))),
+                        'U' => Out::Ansi(Ansi::C1(C1::Fe(Fe::MW))),
+                        'V' => Out::Ansi(Ansi::C1(C1::Fe(Fe::SPA))),
+                        'W' => Out::Ansi(Ansi::C1(C1::Fe(Fe::EPA))),
+                        'X' => {
                             self.state = State::String(StringKind::Regular);
                             Out::Ansi(Ansi::C1(C1::Fe(Fe::SOS)))
                         },
-                        b'Y' => Out::Ansi(Ansi::C1(C1::Fe(Fe::SGCI))),
-                        b'Z' => Out::Ansi(Ansi::C1(C1::Fe(Fe::SCI))),
-                        b'[' => {
+                        'Y' => Out::Ansi(Ansi::C1(C1::Fe(Fe::SGCI))),
+                        'Z' => Out::Ansi(Ansi::C1(C1::Fe(Fe::SCI))),
+                        '[' => {
                             self.state = State::CsiStart;
                             Out::None
                         }
-                        b'\\' => Out::Ansi(Ansi::C1(C1::Fe(Fe::ST))),
-                        b']' => {
+                        '\\' => Out::Ansi(Ansi::C1(C1::Fe(Fe::ST))),
+                        ']' => {
                             self.state = State::String(StringKind::Os);
                             Out::Ansi(Ansi::C1(C1::Fe(Fe::OSC)))
                         },
-                        b'^' => {
+                        '^' => {
                             self.state = State::String(StringKind::Privacy);
                             Out::Ansi(Ansi::C1(C1::Fe(Fe::PM)))
                         },
-                        b'_' => {
+                        '_' => {
                             self.state = State::String(StringKind::ApplicationProgramCommand);
                             Out::Ansi(Ansi::C1(C1::Fe(Fe::APC)))
                         },
                         _ => unreachable!(),
                     }
                 }
-                c @ 0x60..=0x7E => {
+                0x60..=0x7E => {
                     // Fs
                     self.state = State::Default;
-                    Out::Ansi(Ansi::C1(C1::Fs(match c {
-                        b'`' => Fs::DMI,
-                        b'a' => Fs::INT,
-                        b'b' => Fs::EMI,
-                        b'c' => Fs::RIS,
-                        b'd' => Fs::CMD,
-                        b'e' => Fs::Unknown(c),
-                        b'f' => Fs::Unknown(c),
-                        b'g' => Fs::Unknown(c),
-                        b'h' => Fs::Unknown(c),
-                        b'i' => Fs::Unknown(c),
-                        b'j' => Fs::Unknown(c),
-                        b'k' => Fs::Unknown(c),
-                        b'l' => Fs::LCKMEM,
-                        b'm' => Fs::ULKMEM,
-                        b'n' => Fs::LS2,
-                        b'o' => Fs::LS3,
-                        b'p' => Fs::Unknown(c),
-                        b'q' => Fs::Unknown(c),
-                        b'r' => Fs::Unknown(c),
-                        b's' => Fs::Unknown(c),
-                        b't' => Fs::Unknown(c),
-                        b'u' => Fs::Unknown(c),
-                        b'v' => Fs::Unknown(c),
-                        b'w' => Fs::Unknown(c),
-                        b'x' => Fs::Unknown(c),
-                        b'y' => Fs::Unknown(c),
-                        b'z' => Fs::Unknown(c),
-                        b'{' => Fs::Unknown(c),
-                        b'|' => Fs::LS3R,
-                        b'}' => Fs::LS2R,
-                        b'~' => Fs::LS1R,
+                    Out::Ansi(Ansi::C1(C1::Fs(match input {
+                        '`' => Fs::DMI,
+                        'a' => Fs::INT,
+                        'b' => Fs::EMI,
+                        'c' => Fs::RIS,
+                        'd' => Fs::CMD,
+                        'e' => Fs::Unknown(input as u8),
+                        'f' => Fs::Unknown(input as u8),
+                        'g' => Fs::Unknown(input as u8),
+                        'h' => Fs::Unknown(input as u8),
+                        'i' => Fs::Unknown(input as u8),
+                        'j' => Fs::Unknown(input as u8),
+                        'k' => Fs::Unknown(input as u8),
+                        'l' => Fs::LCKMEM,
+                        'm' => Fs::ULKMEM,
+                        'n' => Fs::LS2,
+                        'o' => Fs::LS3,
+                        'p' => Fs::Unknown(input as u8),
+                        'q' => Fs::Unknown(input as u8),
+                        'r' => Fs::Unknown(input as u8),
+                        's' => Fs::Unknown(input as u8),
+                        't' => Fs::Unknown(input as u8),
+                        'u' => Fs::Unknown(input as u8),
+                        'v' => Fs::Unknown(input as u8),
+                        'w' => Fs::Unknown(input as u8),
+                        'x' => Fs::Unknown(input as u8),
+                        'y' => Fs::Unknown(input as u8),
+                        'z' => Fs::Unknown(input as u8),
+                        '{' => Fs::Unknown(input as u8),
+                        '|' => Fs::LS3R,
+                        '}' => Fs::LS2R,
+                        '~' => Fs::LS1R,
                         _ => unreachable!(),
                     })))
                 }
-                c => {
+                _ => {
                     self.state = State::Default;
-                    Out::Ansi(Ansi::C1(C1::Invalid(c)))
+                    Out::Ansi(Ansi::C1(C1::Invalid(input)))
                 }
             },
             State::CsiStart => match input {
-                b'=' => {
-                    self.state = State::CSI;
+                '=' => {
+                    self.state = State::Csi;
                     self.mode = CsiMod::Equal;
                     Out::None
                 }
-                b'?' => {
-                    self.state = State::CSI;
+                '?' => {
+                    self.state = State::Csi;
                     self.mode = CsiMod::Question;
                     Out::None
                 }
                 _ => {
-                    self.state = State::CSI;
+                    self.state = State::Csi;
                     self.mode = CsiMod::Standard;
                     return self.next(input);
                 }
             },
-            State::CSI => match input {
-                d @ b'0'..=b'9' => {
+            State::Csi => match input {
+                d @ '0'..='9' => {
                     self.size = self.curr + 1;
                     if let Some(v) = self.nums.get_mut(self.curr as usize) {
                         //TODO test if this overflows
-                        *v = *v * 10 + (d - b'0') as u16;
+                        
+                        if let Some(nv) = v.checked_mul(10).and_then(|v|v.checked_add((d as u8 - b'0') as u16)){
+                            *v = nv;
+                        }else{
+                            self.invalid = InvalidKind::IntegerOverflow;
+                        }
+                        // *v = *v * 10 + (d as u8 - b'0') as u16;
                     } else {
                         self.invalid = InvalidKind::SequenceTooLarge;
                     }
                     Out::None
                 }
-                b';' => {
+                ';' => {
                     if let Some(next) = self.curr.checked_add(1) {
                         self.curr = next;
                         if let Some(next) = self.nums.get_mut(self.curr as usize){
@@ -833,10 +873,10 @@ impl<const N: usize> AnsiParser<N> {
                     }
                 }
             },
-            State::String(kind) => match input{
+            State::String(kind) => match input as u32{
                 0x1b => {
                     self.state = State::StringEcp(kind);
-                    if let Some(previous) = self.string_extra_byte{
+                    if let Some(previous) = self.string_extra_char{
                         match kind{
                             StringKind::DeviceControl => Out::Ansi(Ansi::C1(C1::Fe(Fe::DCSData(previous)))),
                             StringKind::Regular => Out::Ansi(Ansi::C1(C1::Fe(Fe::SData(previous)))),
@@ -848,12 +888,12 @@ impl<const N: usize> AnsiParser<N> {
                         Out::None
                     }
                 }
-                c => {
-                    let c = if let Some(previous) = self.string_extra_byte{
-                        self.string_extra_byte = Some(c);
+                _ => {
+                    let c = if let Some(previous) = self.string_extra_char{
+                        self.string_extra_char = Some(input);
                         previous
                     }else{
-                        c
+                        input
                     };
                     match kind{
                         StringKind::DeviceControl => Out::Ansi(Ansi::C1(C1::Fe(Fe::DCSData(c)))),
@@ -865,202 +905,202 @@ impl<const N: usize> AnsiParser<N> {
                 }
             },
             State::StringEcp(kind) => match input{
-                b'\\' => {
+                '\\' => {
                     self.state = State::Default;
                     Out::Ansi(Ansi::C1(C1::Fe(Fe::ST)))
                 }
                 c => {
-                    self.string_extra_byte = Some(c);
+                    self.string_extra_char = Some(c);
                     match kind{
-                        StringKind::DeviceControl => Out::Ansi(Ansi::C1(C1::Fe(Fe::DCSData(0x1b)))),
-                        StringKind::Regular => Out::Ansi(Ansi::C1(C1::Fe(Fe::SData(0x1b)))),
-                        StringKind::Os => Out::Ansi(Ansi::C1(C1::Fe(Fe::OSData(0x1b)))),
-                        StringKind::Privacy => Out::Ansi(Ansi::C1(C1::Fe(Fe::PMData(0x1b)))),
-                        StringKind::ApplicationProgramCommand => Out::Ansi(Ansi::C1(C1::Fe(Fe::APCData(0x1b)))),
+                        StringKind::DeviceControl => Out::Ansi(Ansi::C1(C1::Fe(Fe::DCSData(0x1b as char)))),
+                        StringKind::Regular => Out::Ansi(Ansi::C1(C1::Fe(Fe::SData(0x1b as char)))),
+                        StringKind::Os => Out::Ansi(Ansi::C1(C1::Fe(Fe::OSData(0x1b as char)))),
+                        StringKind::Privacy => Out::Ansi(Ansi::C1(C1::Fe(Fe::PMData(0x1b as char)))),
+                        StringKind::ApplicationProgramCommand => Out::Ansi(Ansi::C1(C1::Fe(Fe::APCData(0x1b as char)))),
                     }
                 }
             },
         }
     }
 
-    fn parse_csi(&mut self, c: u8) -> Out{
+    fn parse_csi(&mut self, c: char) -> Out{
         Out::Ansi(Ansi::C1(C1::Fe(Fe::CSI(
             match (self.mode, &self.nums[..self.size as usize], c) {
-                (CsiMod::Standard, [line, col], b'f') => {
+                (CsiMod::Standard, [line, col], 'f') => {
                     CSI::HorizontalVerticalPosition {
                         line: *line,
                         col: *col,
                     }
                 }
-                (CsiMod::Standard, [], b'f') => CSI::CursorTo { line: 1, col: 1 },
+                (CsiMod::Standard, [], 'f') => CSI::CursorTo { line: 1, col: 1 },
 
-                (CsiMod::Standard, [line, col], b'H') => CSI::CursorTo {
+                (CsiMod::Standard, [line, col], 'H') => CSI::CursorTo {
                     line: *line,
                     col: *col,
                 },
-                (CsiMod::Standard, [], b'H') => CSI::CursorTo { line: 1, col: 1 },
+                (CsiMod::Standard, [], 'H') => CSI::CursorTo { line: 1, col: 1 },
 
-                (CsiMod::Standard, [amount], b'A') => CSI::CursorUp(*amount),
-                (CsiMod::Standard, [], b'A') => CSI::CursorUp(1),
+                (CsiMod::Standard, [amount], 'A') => CSI::CursorUp(*amount),
+                (CsiMod::Standard, [], 'A') => CSI::CursorUp(1),
 
-                (CsiMod::Standard, [amount], b'B') => CSI::CursorDown(*amount),
-                (CsiMod::Standard, [], b'B') => CSI::CursorDown(1),
+                (CsiMod::Standard, [amount], 'B') => CSI::CursorDown(*amount),
+                (CsiMod::Standard, [], 'B') => CSI::CursorDown(1),
 
-                (CsiMod::Standard, [amount], b'C') => CSI::CursorRight(*amount),
-                (CsiMod::Standard, [], b'C') => CSI::CursorRight(1),
+                (CsiMod::Standard, [amount], 'C') => CSI::CursorRight(*amount),
+                (CsiMod::Standard, [], 'C') => CSI::CursorRight(1),
 
-                (CsiMod::Standard, [amount], b'D') => CSI::CursorLeft(*amount),
-                (CsiMod::Standard, [], b'D') => CSI::CursorLeft(1),
+                (CsiMod::Standard, [amount], 'D') => CSI::CursorLeft(*amount),
+                (CsiMod::Standard, [], 'D') => CSI::CursorLeft(1),
 
-                (CsiMod::Standard, [amount], b'E') => CSI::CursorNextLine(*amount),
-                (CsiMod::Standard, [], b'E') => CSI::CursorNextLine(1),
+                (CsiMod::Standard, [amount], 'E') => CSI::CursorNextLine(*amount),
+                (CsiMod::Standard, [], 'E') => CSI::CursorNextLine(1),
 
-                (CsiMod::Standard, [amount], b'F') => CSI::CursorPreviousLine(*amount),
-                (CsiMod::Standard, [], b'F') => CSI::CursorPreviousLine(1),
+                (CsiMod::Standard, [amount], 'F') => CSI::CursorPreviousLine(*amount),
+                (CsiMod::Standard, [], 'F') => CSI::CursorPreviousLine(1),
 
-                (CsiMod::Standard, [col], b'G') => CSI::CursorHorizontalAbsolute(*col),
-                (CsiMod::Standard, [], b'G') => CSI::CursorHorizontalAbsolute(1),
+                (CsiMod::Standard, [col], 'G') => CSI::CursorHorizontalAbsolute(*col),
+                (CsiMod::Standard, [], 'G') => CSI::CursorHorizontalAbsolute(1),
 
-                (CsiMod::Standard, [line], b'd') => CSI::CursorLineAbsolute(*line),
-                (CsiMod::Standard, [], b'd') => CSI::CursorLineAbsolute(1),
+                (CsiMod::Standard, [line], 'd') => CSI::CursorLineAbsolute(*line),
+                (CsiMod::Standard, [], 'd') => CSI::CursorLineAbsolute(1),
 
-                (CsiMod::Standard, [], b'J') => CSI::EraseDisplay,
-                (CsiMod::Standard, [0], b'J') => CSI::EraseFromCursor,
-                (CsiMod::Standard, [1], b'J') => CSI::EraseToCursor,
-                (CsiMod::Standard, [2], b'J') => CSI::EraseScreen,
-                (CsiMod::Standard, [3], b'J') => CSI::EraseSavedLines,
+                (CsiMod::Standard, [], 'J') => CSI::EraseDisplay,
+                (CsiMod::Standard, [0], 'J') => CSI::EraseFromCursor,
+                (CsiMod::Standard, [1], 'J') => CSI::EraseToCursor,
+                (CsiMod::Standard, [2], 'J') => CSI::EraseScreen,
+                (CsiMod::Standard, [3], 'J') => CSI::EraseSavedLines,
 
-                (CsiMod::Standard, [], b'K') => CSI::EraseFromCursorToEndOfLine,
-                (CsiMod::Standard, [0], b'K') => CSI::EraseFromCursorToEndOfLine,
-                (CsiMod::Standard, [1], b'K') => CSI::EraseFromCursorToEndOfLine,
-                (CsiMod::Standard, [2], b'K') => CSI::EraseLine,
+                (CsiMod::Standard, [], 'K') => CSI::EraseFromCursorToEndOfLine,
+                (CsiMod::Standard, [0], 'K') => CSI::EraseFromCursorToEndOfLine,
+                (CsiMod::Standard, [1], 'K') => CSI::EraseFromCursorToEndOfLine,
+                (CsiMod::Standard, [2], 'K') => CSI::EraseLine,
 
-                (CsiMod::Standard, [], b'L') => CSI::InsertLines(1),
-                (CsiMod::Standard, [lines], b'L') => CSI::InsertLines(*lines),
+                (CsiMod::Standard, [], 'L') => CSI::InsertLines(1),
+                (CsiMod::Standard, [lines], 'L') => CSI::InsertLines(*lines),
 
-                (CsiMod::Standard, [], b'M') => CSI::DeleteLines(1),
-                (CsiMod::Standard, [lines], b'M') => CSI::DeleteLines(*lines),
+                (CsiMod::Standard, [], 'M') => CSI::DeleteLines(1),
+                (CsiMod::Standard, [lines], 'M') => CSI::DeleteLines(*lines),
 
-                (CsiMod::Standard, [5], b'i') => CSI::AuxPortOn,
-                (CsiMod::Standard, [4], b'i') => CSI::AuxPortOff,
-                (CsiMod::Standard, [5], b'n') => CSI::DeviceStatusReport,
-                (CsiMod::Standard, [6], b'n') => CSI::ReportCursorPosition,
+                (CsiMod::Standard, [5], 'i') => CSI::AuxPortOn,
+                (CsiMod::Standard, [4], 'i') => CSI::AuxPortOff,
+                (CsiMod::Standard, [5], 'n') => CSI::DeviceStatusReport,
+                (CsiMod::Standard, [6], 'n') => CSI::ReportCursorPosition,
 
-                (CsiMod::Standard, [], b's') => CSI::SaveCurrentCursorPosition,
-                (CsiMod::Standard, [], b'u') => CSI::RestoreCurrentCursorPosition,
+                (CsiMod::Standard, [], 's') => CSI::SaveCurrentCursorPosition,
+                (CsiMod::Standard, [], 'u') => CSI::RestoreCurrentCursorPosition,
 
-                (CsiMod::Question, [25], b'h') => CSI::ShowCursor,
-                (CsiMod::Question, [25], b'l') => CSI::HideCursor,
+                (CsiMod::Question, [25], 'h') => CSI::ShowCursor,
+                (CsiMod::Question, [25], 'l') => CSI::HideCursor,
 
-                (CsiMod::Question, [1004], b'h') => CSI::EnableFocusReporting,
-                (CsiMod::Question, [1004], b'l') => CSI::DisableFocusReporting,
+                (CsiMod::Question, [1004], 'h') => CSI::EnableFocusReporting,
+                (CsiMod::Question, [1004], 'l') => CSI::DisableFocusReporting,
 
-                (CsiMod::Question, [47], b'h') => CSI::RestoreScreen,
-                (CsiMod::Question, [47], b'l') => CSI::SaveScreen,
+                (CsiMod::Question, [47], 'h') => CSI::RestoreScreen,
+                (CsiMod::Question, [47], 'l') => CSI::SaveScreen,
 
-                (CsiMod::Question, [1049], b'h') => CSI::EnableAlternativeBuffer,
-                (CsiMod::Question, [1049], b'l') => CSI::DisableAlternativeBuffer,
+                (CsiMod::Question, [1049], 'h') => CSI::EnableAlternativeBuffer,
+                (CsiMod::Question, [1049], 'l') => CSI::DisableAlternativeBuffer,
 
-                (CsiMod::Standard, [], b'm') => {
+                (CsiMod::Standard, [], 'm') => {
                     CSI::SelectGraphicRendition(GraphicsRendition(&[0]))
                 }
-                (CsiMod::Standard, gr, b'm') => {
+                (CsiMod::Standard, gr, 'm') => {
                     CSI::SelectGraphicRendition(GraphicsRendition(gr))
                 }
 
-                (CsiMod::Standard, [top, bottom], b'r') => CSI::SetScrollingRegion {
+                (CsiMod::Standard, [top, bottom], 'r') => CSI::SetScrollingRegion {
                     top: *top,
                     bottom: *bottom,
                 },
 
-                (CsiMod::Question, [0], b'h') => {
+                (CsiMod::Question, [0], 'h') => {
                     CSI::ScreenMode(ScreenMode::Monochrome40x25)
                 }
-                (CsiMod::Question, [1], b'h') => CSI::ScreenMode(ScreenMode::Color40x25),
-                (CsiMod::Question, [2], b'h') => {
+                (CsiMod::Question, [1], 'h') => CSI::ScreenMode(ScreenMode::Color40x25),
+                (CsiMod::Question, [2], 'h') => {
                     CSI::ScreenMode(ScreenMode::Monochrome80x25)
                 }
-                (CsiMod::Question, [3], b'h') => CSI::ScreenMode(ScreenMode::Color80x25),
-                (CsiMod::Question, [4], b'h') => {
+                (CsiMod::Question, [3], 'h') => CSI::ScreenMode(ScreenMode::Color80x25),
+                (CsiMod::Question, [4], 'h') => {
                     CSI::ScreenMode(ScreenMode::Graphics4Color320x200)
                 }
-                (CsiMod::Question, [5], b'h') => {
+                (CsiMod::Question, [5], 'h') => {
                     CSI::ScreenMode(ScreenMode::GraphicsMonochrome320x200)
                 }
-                (CsiMod::Question, [6], b'h') => {
+                (CsiMod::Question, [6], 'h') => {
                     CSI::ScreenMode(ScreenMode::GraphicsMonochrome640x200)
                 }
-                (CsiMod::Question, [7], b'h') => {
+                (CsiMod::Question, [7], 'h') => {
                     CSI::ScreenMode(ScreenMode::EnableLineWrapping)
                 }
-                (CsiMod::Question, [13], b'h') => {
+                (CsiMod::Question, [13], 'h') => {
                     CSI::ScreenMode(ScreenMode::GraphicsColor320x200)
                 }
-                (CsiMod::Question, [14], b'h') => {
+                (CsiMod::Question, [14], 'h') => {
                     CSI::ScreenMode(ScreenMode::Graphics16Color640x200)
                 }
-                (CsiMod::Question, [15], b'h') => {
+                (CsiMod::Question, [15], 'h') => {
                     CSI::ScreenMode(ScreenMode::GraphicsMonochrome630x350)
                 }
-                (CsiMod::Question, [16], b'h') => {
+                (CsiMod::Question, [16], 'h') => {
                     CSI::ScreenMode(ScreenMode::Graphics16Color640x350)
                 }
-                (CsiMod::Question, [17], b'h') => {
+                (CsiMod::Question, [17], 'h') => {
                     CSI::ScreenMode(ScreenMode::GraphicsMonochrome640x480)
                 }
-                (CsiMod::Question, [18], b'h') => {
+                (CsiMod::Question, [18], 'h') => {
                     CSI::ScreenMode(ScreenMode::Graphics16Color640x480)
                 }
-                (CsiMod::Question, [19], b'h') => {
+                (CsiMod::Question, [19], 'h') => {
                     CSI::ScreenMode(ScreenMode::Graphics256Color320x200)
                 }
 
-                (CsiMod::Question, [0], b'l') => {
+                (CsiMod::Question, [0], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::Monochrome40x25)
                 }
-                (CsiMod::Question, [1], b'l') => {
+                (CsiMod::Question, [1], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::Color40x25)
                 }
-                (CsiMod::Question, [2], b'l') => {
+                (CsiMod::Question, [2], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::Monochrome80x25)
                 }
-                (CsiMod::Question, [3], b'l') => {
+                (CsiMod::Question, [3], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::Color80x25)
                 }
-                (CsiMod::Question, [4], b'l') => {
+                (CsiMod::Question, [4], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::Graphics4Color320x200)
                 }
-                (CsiMod::Question, [5], b'l') => {
+                (CsiMod::Question, [5], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::GraphicsMonochrome320x200)
                 }
-                (CsiMod::Question, [6], b'l') => {
+                (CsiMod::Question, [6], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::GraphicsMonochrome640x200)
                 }
-                (CsiMod::Question, [7], b'l') => {
+                (CsiMod::Question, [7], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::EnableLineWrapping)
                 }
-                (CsiMod::Question, [12], b'l') => {
+                (CsiMod::Question, [12], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::StopBlinkingCursor)
                 }
-                (CsiMod::Question, [13], b'l') => {
+                (CsiMod::Question, [13], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::GraphicsColor320x200)
                 }
-                (CsiMod::Question, [14], b'l') => {
+                (CsiMod::Question, [14], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::Graphics16Color640x200)
                 }
-                (CsiMod::Question, [15], b'l') => {
+                (CsiMod::Question, [15], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::GraphicsMonochrome630x350)
                 }
-                (CsiMod::Question, [16], b'l') => {
+                (CsiMod::Question, [16], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::Graphics16Color640x350)
                 }
-                (CsiMod::Question, [17], b'l') => {
+                (CsiMod::Question, [17], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::GraphicsMonochrome640x480)
                 }
-                (CsiMod::Question, [18], b'l') => {
+                (CsiMod::Question, [18], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::Graphics16Color640x480)
                 }
-                (CsiMod::Question, [19], b'l') => {
+                (CsiMod::Question, [19], 'l') => {
                     CSI::ResetScreenMode(ScreenMode::Graphics256Color320x200)
                 }
 
