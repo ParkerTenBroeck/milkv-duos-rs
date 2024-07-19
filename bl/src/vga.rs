@@ -346,7 +346,7 @@ impl VGAAnsiController{
     }
 
     unsafe fn handle_ansi(&mut self, ansi: ansi::Ansi){
-        if ansi != ansi::Ansi::C0(ansi::C0::Space){
+        if ansi != ansi::Ansi::C0(ansi::C0::SP){
             // crate::println!("{ansi:?}");
         }
         match ansi{
@@ -369,7 +369,7 @@ impl VGAAnsiController{
             .build();
 
         match c0{
-            ansi::C0::Backspace => {
+            ansi::C0::BS => {
                 self.col -= 1;
                 if self.col < 0 {
                     self.col = COLS - 1;
@@ -387,11 +387,11 @@ impl VGAAnsiController{
                 .draw(display)
                 .unwrap();
             }
-            ansi::C0::Bell => {}
-            ansi::C0::CarriageReturn => {
+            ansi::C0::BEL => {}
+            ansi::C0::CR => {
                 self.col = 0;
             }
-            ansi::C0::Space => {
+            ansi::C0::SP => {
                 Rectangle::new(
                     Point::new(
                         self.col * CHAR.character_size.width as i32,
@@ -424,8 +424,8 @@ impl VGAAnsiController{
                     self.col += 1;
                 }
             }
-            ansi::C0::FormFeed => {}
-            ansi::C0::LineFeed => {
+            ansi::C0::FF => {}
+            ansi::C0::LF => {
                 self.col = 0;
                 self.line += 1;
                 if self.line >= self.scroll_end {
@@ -443,7 +443,7 @@ impl VGAAnsiController{
                     self.line -= 1;
                 }
             }
-            ansi::C0::HorizontalTab => self.col = (self.col + 3) & !(4 - 1),
+            ansi::C0::HT => self.col = (self.col + 3) & !(4 - 1),
             _ => {}
         }
     }
@@ -631,7 +631,7 @@ pub unsafe fn print(data: &[u8]) {
     static mut CONTROLLER: VGAAnsiController = VGAAnsiController::new();
 
     for byte in data {
-        CONTROLLER.advance(PARSER.next(*byte));
+        CONTROLLER.advance(PARSER.next(*byte as char));
     }
 
     vga::flush_frame(FRAME_BUF as usize);

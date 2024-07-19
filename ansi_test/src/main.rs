@@ -7,7 +7,7 @@ fn main() {
     let mut parser: AnsiParser = AnsiParser::new();
 
     for byte in file {
-        match parser.next(byte) {
+        match parser.next(byte as char) {
             Out::Ansi(a) => {
                 if false {
                     println!("{a:#?}")
