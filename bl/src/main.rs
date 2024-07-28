@@ -9,7 +9,6 @@ pub mod panic;
 pub mod prelude;
 // pub mod vga;
 pub mod io;
-pub mod vga;
 
 use platform::fip_param1;
 pub use prelude::*;
@@ -135,46 +134,49 @@ pub use prelude::*;
 //     }
 // }
 
+// static mut DDR: u8 = 1;
+// static mut EFUSE_LOCK: u8 = 1;
+// static mut PLL_SPEED: u8 = 1;
+
 #[no_mangle]
-pub extern "C" fn bl_rust_main() {
-    timer::mdelay(250);
-    unsafe {
-        uart::console_init();
+pub extern "C" fn bl_rust_main(init: usize) {
+    if init == 0{
+        timer::mdelay(250);
+        unsafe {
+            uart::console_init();
+        }
+        timer::mdelay(250);
+        io::print("\n\n\nBooted into firmware\nInitialized uart to 115200\n");
     }
-    timer::mdelay(250);
-    io::print("\n\n\nBooted into firmware\nInitialized uart to 115200\n");
+
+    crate::println!("{init}");
+
+    unsafe{
+        // init_interrupts();
+        csr::disable_interrupts();
+        csr::disable_external_interrupt();
+        csr::disable_timer_interrupt();
+        io::print("Disabled Interrupts\n");
+    }
 
     unsafe {
-        if let Err(_) = security::efuse::lock_efuse() {
-            reset();
-        } else {
-            io::print("Locked efuse\n");
+        if init == 0{
+            if let Err(_) = security::efuse::lock_efuse() {
+                reset();
+            } else {
+                io::print("Locked efuse\n");
+                // EFUSE_LOCK = 2;
+            }
         }
     }
 
-    // unsafe{
-    //     vga();
-    // }
-
-    // unsafe {
-    //     setup_dl_flag()
-    // }
-    // io::print("setup dl flag\n");
-
-    // unsafe {
-    //     switch_rtc_mode_1st_stage()
-    // }
-    // io::print("setup first stage rtc mode\n");
-
-    // unsafe {
-    //     set_rtc_en_registers()
-    // }
-    // io::print("enabled rtc registers\n");
-
     unsafe {
-        ddr::init_ddr();
+        if init == 0{
+            ddr::init_ddr();
+            // DDR = 2;
+            io::print("DDR initialized\n");
+        }
     }
-    io::print("DDR initialized\n");
 
     unsafe {
         // set pinmux to enable output of LED pin
@@ -183,93 +185,42 @@ pub extern "C" fn bl_rust_main() {
     }
     io::print("Connfigured pinmux(LED pin 29)\n");
 
-    io::print("Loading second stage\n");
-    let dst = 0x80000000 as *mut core::ffi::c_void;
-    let off = unsafe { (*mmio::PARAM1).bl2_img_size } as usize + core::mem::size_of::<fip_param1>();
-    let size = unsafe { (*mmio::PARAM1).param2_size } as usize;
-    unsafe {
-        rom_api::p_rom_api_load_image(dst, off as u32, size, 1);
-    }
-    io::print("\n");
+    // io::print("Loading second stage\n");
+    // let dst = 0x80000000 as *mut core::ffi::c_void;
+    // let off = unsafe { (*mmio::PARAM1).bl2_img_size } as usize + core::mem::size_of::<fip_param1>();
+    // let size = unsafe { (*mmio::PARAM1).param2_size } as usize;
+    // unsafe {
+    //     rom_api::p_rom_api_load_image(dst, off as u32, size, 1);
+    // }
+    // io::print("\n");
 
     io::print("Speeding up pll\n");
     unsafe {
-        milkv_rs::platform::init_pll_speed();
-    }
-
-    io::print("Initializing DDR memory video buffer\n");
-    unsafe {
-        vga::init_vga();
-    }
-
-    io::print("Testing second core\n");
-    unsafe { vga::run_on_second() }
-
-    unsafe {
-        io::print("Enabling interrupts\n");
-        init_interrupts();
-        io::print("Interrupts enabled\n");
-    }
-
-    unsafe {
-        io::SOUT = |data| {
-            uart::print_bytes(data);
-            // vga::print(data);
+        if init == 0{
+            milkv_rs::platform::init_pll_speed();
         }
+        // PLL_SPEED = 2;
     }
 
+    
     io::print("Starting console\n");
-
-    // cmd::run();
-    loop {
-        unsafe {
-            let mut i = 0;
-            let mut start =
-                timer::get_mtimer().wrapping_add(timer::SYS_COUNTER_FREQ_IN_SECOND / 60);
-            while start > timer::get_mtimer() && i < BUFF.len() - 1 {
-                if uart::has_b() {
-                    start =
-                        timer::get_mtimer().wrapping_add(timer::SYS_COUNTER_FREQ_IN_SECOND / 60);
-                    BUFF[i] = uart::get_b();
-                    // if BUFF[i] == 226{
-                    //     panic!();
-                    // }
-                    i += 1
-                }
-            }
-            vga::print(&BUFF[..i]);
-        }
+    cmd::run();
+    io::print("Press key for early console\n");
+    
+    let time = timer::get_mtimer().wrapping_add(timer::SYS_COUNTER_FREQ_IN_SECOND * 2);
+    while timer::get_mtimer() < time{
+        if uart::has_b(){
+        }            
     }
+    // unsafe{
+    //     core::arch::asm!("
+    //     jr {0}
+    // ", in(reg) dst)
+    // }
 }
 
-static mut BUFF: [u8; 1 << 14] = [0; 1 << 14];
-
 unsafe fn init_interrupts() {
-    csr::enable_timer_interrupt();
-    csr::enable_interrupts();
-    // trigger an interrupt NOW
-    timer::set_timercmp(timer::get_mtimer());
-
-    // plic is seen as a single external interrupt source
-    csr::enable_external_interrupt();
-    // all enabled interrupts allowed
-    plic::mint_threshhold(0);
-
-    //--------------- timer 1 initialization ----------------------
-    interrupt_vector::add_plic_handler(interrupt::TIMER1, || {
-        vga::init_vga();
-        timer::mm::clear_int(mmio::TIMER1);
-    });
-    // timer 1 interrupt number
-    plic::set_priority(interrupt::TIMER1, 2);
-    plic::enable_m_interrupt(interrupt::TIMER1);
-
-    // initialize timer1
-    timer::mm::set_mode(mmio::TIMER1, timer::mm::TimerMode::Count);
-    // quarter second
-    timer::mm::set_load_value(mmio::TIMER1, timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 60);
-    // timer::mm::set_enabled(mmio::TIMER1, true);
-    //-------------------------------------
+    plic::clear();
 
     //--------------- timer 0 initialization ----------------------
     interrupt_vector::add_plic_handler(interrupt::TIMER0, || {
@@ -288,6 +239,16 @@ unsafe fn init_interrupts() {
     timer::mm::set_enabled(mmio::TIMER0, true);
     //-------------------------------------
 
-    plic::set_priority(interrupt::UART0, 1);
-    plic::enable_m_interrupt(interrupt::UART0);
+
+    // all enabled interrupts allowed
+    plic::mint_threshhold(0);
+    // plic is seen as a single external interrupt source
+    csr::enable_external_interrupt();
+
+    csr::enable_timer_interrupt();
+    csr::enable_interrupts();
+
+
+    // trigger an interrupt NOW
+    timer::set_timercmp(timer::get_mtimer());
 }

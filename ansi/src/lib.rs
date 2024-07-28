@@ -302,7 +302,8 @@ pub enum CSI<'a> {
         sequence: &'a[u16], 
         modifier: CsiMod,
         end: char
-    }
+    },
+    ReportedCursorPosition { row: u16, col: u16 },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -985,6 +986,7 @@ impl<const N: usize> AnsiParser<N> {
                 (CsiMod::Standard, [4], 'i') => CSI::AuxPortOff,
                 (CsiMod::Standard, [5], 'n') => CSI::DeviceStatusReport,
                 (CsiMod::Standard, [6], 'n') => CSI::ReportCursorPosition,
+                (CsiMod::Standard, [r, c], 'n') => CSI::ReportedCursorPosition{row: *r, col: *c},
 
                 (CsiMod::Standard, [], 's') => CSI::SaveCurrentCursorPosition,
                 (CsiMod::Standard, [], 'u') => CSI::RestoreCurrentCursorPosition,

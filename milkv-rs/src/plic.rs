@@ -68,6 +68,31 @@ pub struct Plic {
     _reserved9: [u32; 0xFFC / 4 - 1],
 }
 
+pub unsafe fn clear() {
+    for i in 1..MAX_INT_ID{
+        disable_m_interrupt(i as u32);
+        disable_s_interrupt(i as u32);
+        set_priority(i as u32, 0);
+    }
+
+    loop{
+        let v = mclaim_int();
+        if v != 0{
+            mint_complete(v);
+        }else{
+            break;
+        }
+    }
+    loop{
+        let v = sclaim_int();
+        if v != 0{
+            sint_complete(v);
+        }else{
+            break;
+        }
+    }
+}
+
 pub unsafe fn mclaim_int() -> u32 {
     addr_of_mut!((*PLIC).h0_mclaim).read_unaligned()
 }

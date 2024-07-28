@@ -810,7 +810,9 @@ const COMAMNDS: &[&'static dyn Command] = &[
     }),
     cmd!("lsc", "", (self, _args) -> {
         unsafe{
-            platform::start_c906l();
+            platform::reset_c906l();
+            milkv_rs::csr::disable_interrupts();
+
             let addr = core::array::from_fn::<_, 8, _>(|_|uart::get_b());
             let len = core::array::from_fn::<_, 8, _>(|_|uart::get_b());
             let addr = usize::from_be_bytes(addr);
@@ -825,7 +827,30 @@ const COMAMNDS: &[&'static dyn Command] = &[
                 ",
                 in(reg) i);
             }
-            println!("{addr}:{len}");
+            println!("{addr:08x}:{len}");
+        }
+    }),
+    cmd!("lpc", "", (self, _args) -> {
+        unsafe{
+            platform::reset_c906l();
+            milkv_rs::csr::disable_interrupts();
+
+            let addr = core::array::from_fn::<_, 8, _>(|_|uart::get_b());
+            let len = core::array::from_fn::<_, 8, _>(|_|uart::get_b());
+            let addr = usize::from_be_bytes(addr);
+            let len = usize::from_be_bytes(len);
+            for i in addr..(addr + len){
+                (i as *mut u8).write(uart::get_b());
+            }
+            println!("{addr:08x}:{len}");
+            core::arch::asm!(
+                "
+                th.dcache.call
+                th.dcache.iall
+                th.icache.iall
+                jr {0}",
+                in(reg) addr
+            )
         }
     }),
     // cmd!("vgahsp", "(sync: u64)", (self, args) -> {

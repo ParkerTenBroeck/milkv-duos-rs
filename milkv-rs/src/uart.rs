@@ -128,6 +128,11 @@ pub fn print_b(char: u8) {
     }
 }
 
+pub unsafe fn uart_has_rx_space() -> bool{
+    let lsr = core::ptr::addr_of_mut!((*UART0).lsr);
+    (lsr.read_volatile() & UART_LSR_THRE) != 0
+}
+
 #[inline(never)]
 pub fn print_c(char: u8) {
     if char == b'\n' {

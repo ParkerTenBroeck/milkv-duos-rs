@@ -22,9 +22,8 @@ pub struct Stdout;
 
 impl core::fmt::Write for Stdout {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        milkv_rs::uart::print(s);
+        unsafe { crate::io::SOUT(s.as_bytes()) }
         Ok(())
     }
 }
-
 pub use milkv_rs::*;

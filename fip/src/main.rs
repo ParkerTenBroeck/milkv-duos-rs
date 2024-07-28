@@ -1,6 +1,5 @@
 use std::{io::Write, path::{Path, PathBuf}};
 
-
 pub const PARAM1_MAGIC1: [u8; 8] = [b'C', b'V', b'B', b'L', b'0', b'1', b'\n', b'\0'];
 
 pub const IMAGE_ALIGN: usize = 512;

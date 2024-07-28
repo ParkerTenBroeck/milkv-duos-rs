@@ -8,11 +8,11 @@ pub const GPIO_SEC: *mut GPIO = mmio::GPIO1;
 
 pub const V_SYNC_PIN: u8 = 21;
 pub const H_SYNC_PIN: u8 = 20;
-pub const C_START_PIN: u8 = 13;
+pub const D_PINS: [u8; 8] = [11, 12, 13, 14, 15, 16, 18, 19];
 
 pub const VERT_SCALE: u64 = 1;
-pub const PIXEL_SCALE: u64 = 4;
-pub const PIXEL_SCALE_DIV: u64 = 3;
+pub const PIXEL_SCALE: u64 = 2;
+pub const PIXEL_SCALE_DIV: u64 = 1;
 // const PIXEL_SCALE: u64 = 2;
 // const PIXEL_SCALE_DIV: u64 = 1;
 
@@ -33,7 +33,7 @@ pub const V_BACK_PORCH: u64 = 525  - LINES_VIS - V_FRONT_PORCH - V_SYNC_PULSE;
 pub const V_TOTAL: u64 = LINES_VIS + V_FRONT_PORCH + V_SYNC_PULSE + V_BACK_PORCH;
 
 // pub const PX_TIM: u64 = 786_432 + 15000; //0_0397219464 * timer::SYS_COUNTER_FREQ_IN_US;
-pub const PX_TIM: u64 = 786_376196; //0_0397219464 * timer::SYS_COUNTER_FREQ_IN_US;
+pub const PX_TIM: u64 = 786_376196; //1049_925865 //0_0397219464 * timer::SYS_COUNTER_FREQ_IN_US;
 pub const PX_TIME_DIV_FACT: u64 = 25_175000; //10000000000;
 
 
@@ -57,14 +57,10 @@ pub unsafe fn run_vga(addr: usize) -> ! {
         (pix * PX_TIM) / PX_TIME_DIV_FACT
     }
 
-    gpio::set_gpio_direction(GPIO_SEC, C_START_PIN + 0, gpio::Direction::Output);
-    gpio::set_gpio_direction(GPIO_SEC, C_START_PIN + 1, gpio::Direction::Output);
-    gpio::set_gpio_direction(GPIO_SEC, C_START_PIN + 2, gpio::Direction::Output);
-    gpio::set_gpio_direction(GPIO_SEC, C_START_PIN + 3, gpio::Direction::Output);
-    gpio::set_gpio_direction(GPIO_SEC, C_START_PIN + 4, gpio::Direction::Output);
-    gpio::set_gpio_direction(GPIO_SEC, C_START_PIN + 5, gpio::Direction::Output);
-    gpio::set_gpio_direction(GPIO_SEC, C_START_PIN + 6, gpio::Direction::Output);
-    gpio::set_gpio_direction(GPIO_SEC, C_START_PIN + 7, gpio::Direction::Output);
+    for pin in D_PINS{
+        gpio::set_gpio_direction(GPIO_SEC, pin, gpio::Direction::Output);
+        gpio::set_gpio_direction(GPIO_SEC, pin, gpio::Direction::Output);
+    }
     gpio::set_gpio_direction(GPIO_SEC, V_SYNC_PIN, gpio::Direction::Output);
     gpio::set_gpio_direction(GPIO_SEC, H_SYNC_PIN, gpio::Direction::Output);
 
@@ -97,14 +93,14 @@ pub unsafe fn run_vga(addr: usize) -> ! {
             let lstart = start + per_line(l);
             
             for p in 0..WIDTH {
-                
-                let pend = lstart + ((p+1) * PIXEL_SCALE * PX_TIM) /PIXEL_SCALE_DIV / PX_TIME_DIV_FACT;
+                // const V: u64 = PX_TIM*PIXEL_SCALE/PIXEL_SCALE_DIV/PX_TIME_DIV_FACT;
+                let pend = lstart + ((p+1) * PIXEL_SCALE / PIXEL_SCALE_DIV * PX_TIM) / PX_TIME_DIV_FACT;
                 if (pend + PX_TIM*PIXEL_SCALE/PIXEL_SCALE_DIV/PX_TIME_DIV_FACT) < csr::mcycle(){
                     continue;
                 }
 
                 let pval = ((addr+p) as *mut u8).read_volatile() as u32;
-                let pval = pval << C_START_PIN | const { H_SYNC_PL | V_SYNC_PL };
+                let pval = (pval & 0b00111111) << 11 | ((pval & 0b11000000) << 12) | const { H_SYNC_PL | V_SYNC_PL };
                 gpio_dr.write_volatile(pval);
 
                 while pend > csr::mcycle() {}

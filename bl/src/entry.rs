@@ -8,7 +8,18 @@ core::arch::global_asm!(
     .section .text.entry,"ax",@progbits
     .globl bl_entrypoint
   bl_entrypoint:
+    j bl_entrypoint_real
+    .word 0 // resvered
+    .word 0 // BL2 MSID
+    .word 0 // BL2 version
+    .word 0 //
+    .word 0
+    .word 0
+    .word 0
 
+  bl_entrypoint_real:
+
+    li x10, 0
     li x1, 0
     li x2, 0
     li x3, 0
@@ -18,7 +29,6 @@ core::arch::global_asm!(
     li x7, 0
     li x8, 0
     li x9, 0
-    li x10, 0
     li x11, 0
     li x12, 0
     li x13, 0
@@ -94,6 +104,7 @@ core::arch::global_asm!(
     #li x3, 0x6000
     #csrs {mhint}, x3
   
+    #li x10, 0
     call bl_rust_main
 
     j die

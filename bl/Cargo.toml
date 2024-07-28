@@ -6,9 +6,6 @@ edition = "2021"
 
 [dependencies]
 milkv-rs = { path = "../milkv-rs", features = ["ddr"]}
-vga = { path = "../vga" }
-ansi = { path = "../ansi" }
-embedded-graphics = "*"
 
 [profile.release]
 panic = "abort"

@@ -1,4 +1,4 @@
-use embedded_graphics::text::renderer::CharacterStyle;
+use embedded_graphics::{mono_font::MonoTextStyleBuilder, text::renderer::CharacterStyle};
 use milkv_rs::*;
 
 pub use vga::*;
@@ -16,8 +16,8 @@ pub unsafe fn update_vga() {
     };
     let display = unsafe { &mut *FRAME_BUF };
 
-    let mut character_style = MonoTextStyle::new(&ascii::FONT_5X7, Color::White);
-    character_style.set_background_color(Option::Some(Color::Black));
+    let mut character_style = MonoTextStyle::new(&ascii::FONT_5X7, Color::WHITE);
+    character_style.set_background_color(Option::Some(Color::BLACK));
 
     let mut buff = [0u8; 256];
     struct Buff<'a>(&'a mut [u8], usize);
@@ -102,31 +102,88 @@ pub unsafe fn update_vga() {
 //     unsafe { vga::run_vga(FRAME_BUF as usize) }
 // }
 
-pub unsafe fn run_on_second() {
-    let addr: usize;
-    core::arch::asm!(
-        "la {0}, run_vga",
-        out(reg) addr
-    );
-    platform::reset_c906l_to_addr(addr)
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Color(pub u8);
+
+impl Color {
+    const RED: Color = Color::new(255, 0, 0);
+    const GREEN: Color = Color::new(0, 255, 0);
+    const BLUE: Color = Color::new(0, 0, 255);
+
+    const BLACK: Color = Color::new(0, 0, 0);
+    const WHITE: Color = Color::new(255, 255, 255);
 }
 
-#[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Color {
-    Black = 0,
-    Red = 1,
-    Green = 2,
-    Yellow = 3,
-    Blue = 4,
-    Magenta = 5,
-    Cyan = 6,
-    White = 7,
+impl Color {
+    pub const fn new(red: u8, green: u8, blue: u8) -> Self {
+        Self(blue & 0b11000000 | (green & 0b11100000) >> 2 | (red & 0b11100000) >> 5)
+    }
+
+    pub const fn hsv(h: u8, s: u8, v: u8) -> Self {
+        let r;
+        let g;
+        let b;
+
+        let region;
+        let remainder;
+        let p;
+        let q;
+        let t;
+
+        if s == 0 {
+            r = v;
+            g = v;
+            b = v;
+            return Color::new(r, g, b);
+        }
+
+        region = h / 43;
+        remainder = (h as u32 - (region as u32 * 43)) * 6;
+
+        p = ((v as u32 * (255 - s) as u32) >> 8) as u8;
+        q = ((v as u32 * (255 - ((s as u32 * remainder as u32) >> 8))) >> 8) as u8;
+        t = ((v as u32 * (255 - ((s as u32 * (255 - remainder as u32)) >> 8))) >> 8) as u8;
+
+        match region {
+            0 => {
+                r = v;
+                g = t;
+                b = p;
+            }
+            1 => {
+                r = q;
+                g = v;
+                b = p;
+            }
+            2 => {
+                r = p;
+                g = v;
+                b = t;
+            }
+            3 => {
+                r = p;
+                g = q;
+                b = v;
+            }
+            4 => {
+                r = t;
+                g = p;
+                b = v;
+            }
+            _ => {
+                r = v;
+                g = p;
+                b = q;
+            }
+        }
+
+        return Color::new(r, g, b);
+    }
 }
 
 impl From<Color> for embedded_graphics::pixelcolor::raw::RawU8 {
     fn from(value: Color) -> Self {
-        (value as u8).into()
+        value.0.into()
     }
 }
 
@@ -142,7 +199,8 @@ type FrameBuf = embedded_graphics::framebuffer::Framebuffer<
     { HEIGHT as usize },
     { embedded_graphics::framebuffer::buffer_size::<Color>(WIDTH as usize, HEIGHT as usize) },
 >;
-pub const FRAME_BUF: *mut FrameBuf = 0x90000000usize as *mut FrameBuf;
+pub const FRAME_BUF: *mut FrameBuf =
+    (0x80000000usize + 0x20000000 - core::mem::size_of::<FrameBuf>()) as *mut FrameBuf;
 
 pub unsafe fn init_vga() {
     let mem =
@@ -151,13 +209,14 @@ pub unsafe fn init_vga() {
     let vert = iter.next().unwrap();
     for line in vert.chunks_mut(WIDTH as usize) {
         for (i, pix) in line.iter_mut().enumerate() {
-            *pix = i as u8;
+            *pix = Color::hsv(i as u8, 255, 255).0;
         }
     }
+
     let vert = iter.next().unwrap();
     for line in vert.chunks_mut(WIDTH as usize) {
         for (i, pix) in line.iter_mut().enumerate() {
-            *pix = (i / 2) as u8;
+            *pix = i as u8;
         }
     }
     let hor = iter.next().unwrap();
@@ -191,11 +250,11 @@ pub unsafe fn init_vga() {
     };
 
     // Create styles used by the drawing operations.
-    let thin_stroke = PrimitiveStyle::with_stroke(Color::Red, 1);
-    let thick_stroke = PrimitiveStyle::with_stroke(Color::Green, 3);
+    let thin_stroke = PrimitiveStyle::with_stroke(Color::RED, 1);
+    let thick_stroke = PrimitiveStyle::with_stroke(Color::GREEN, 3);
 
-    let fill = PrimitiveStyle::with_fill(Color::Blue);
-    let character_style = MonoTextStyle::new(&ascii::FONT_5X8, Color::White);
+    let fill = PrimitiveStyle::with_fill(Color::BLUE);
+    let character_style = MonoTextStyle::new(&ascii::FONT_5X8, Color::WHITE);
 
     let yoffset = HEIGHT as i32 / 8 * 3 + 5;
 
@@ -256,14 +315,20 @@ pub unsafe fn init_vga() {
     vga::flush_frame(FRAME_BUF as usize)
 }
 
-
 //------------------- ANSI VGA Controller --------------------------
-struct VGAAnsiController{
+#[derive(Debug)]
+pub struct VGAAnsiController {
     line: i32,
-    col: i32, 
+    col: i32,
 
     bg: Color,
     fg: Color,
+
+    inverted_c: bool,
+    bold: bool,
+    italic: bool,
+    strike: Option<Color>,
+    underline: Option<Color>,
 
     scroll_start: i32,
     scroll_end: i32,
@@ -275,69 +340,85 @@ macro_rules! un_print {
     }};
 }
 
-
-const CHAR: embedded_graphics::mono_font::MonoFont = embedded_graphics::mono_font::ascii::FONT_6X13;
+const CHAR: embedded_graphics::mono_font::MonoFont =
+    embedded_graphics::mono_font::iso_8859_10::FONT_4X6;
+const CHAR_BOLD: embedded_graphics::mono_font::MonoFont =
+    embedded_graphics::mono_font::iso_8859_10::FONT_4X6;
 const COLS: i32 = (vga::WIDTH / CHAR.character_size.width as u64) as i32;
 const LINES: i32 = (vga::HEIGHT / CHAR.character_size.height as u64) as i32;
 
-impl VGAAnsiController{
-    pub const fn new() -> Self{
-        Self { line: 0, col: 0, bg: Color::Black, fg: Color::White, scroll_start: 0, scroll_end: LINES-1 }
-    }
+impl VGAAnsiController {
+    pub const fn new() -> Self {
+        Self {
+            line: 0,
+            col: 0,
+            bg: Color::BLACK,
+            fg: Color::WHITE,
+            scroll_start: 0,
+            scroll_end: LINES - 1,
 
-    pub unsafe fn advance(&mut self, data: ansi::Out){
-        match data{
-            ansi::Out::Ansi(ansi) => 
-            self.handle_ansi(ansi),
-            ansi::Out::Data(char) => 
-            self.print_char(char as char),
-            ansi::Out::None => {},
+            inverted_c: false,
+            strike: None,
+            underline: None,
+            bold: false,
+            italic: false,
         }
     }
 
-    unsafe fn print_char(&mut self, char: char){
+    pub unsafe fn advance(&mut self, data: ansi::Out) {
+        match data {
+            ansi::Out::Ansi(ansi) => self.handle_ansi(ansi),
+            ansi::Out::Data(char) => self.print_char(char as char),
+            ansi::Out::None => {}
+        }
+    }
+
+    unsafe fn print_char(&mut self, char: char) {
         let display = unsafe { &mut *FRAME_BUF };
 
-        use embedded_graphics::text::renderer::CharacterStyle;
-        use embedded_graphics::{
-            mono_font::MonoTextStyle,
-            prelude::*,
-            text::Text,
-        };
+        use embedded_graphics::{prelude::*, text::Text};
 
-        let mut character_style = MonoTextStyle::new(&CHAR, self.fg);
-        character_style.set_background_color(Option::Some(self.bg));
+        let mut character_style = MonoTextStyleBuilder::new()
+            .font(if self.bold { &CHAR_BOLD } else { &CHAR })
+            .text_color(if self.inverted_c { self.bg } else { self.fg })
+            .background_color(if !self.inverted_c { self.bg } else { self.fg });
+        if let Some(color) = self.strike {
+            character_style = character_style.strikethrough_with_color(color);
+        }
+        if let Some(color) = self.underline {
+            character_style = character_style.underline_with_color(color);
+        }
+        let character_style = character_style.build();
 
         let mut buf = [0u8; 4];
         let str = (char).encode_utf8(&mut buf);
-        
+
         Text::new(
             str,
             Point::new(
                 self.col * CHAR.character_size.width as i32,
-                self.line * CHAR.character_size.height as i32 + 10,
+                self.line * CHAR.character_size.height as i32 + 4,
             ),
             character_style,
         )
         .draw(display)
         .unwrap();
-        
 
         if self.col >= COLS - 1 {
             self.col = 0;
             self.line += 1;
             if self.line >= self.scroll_end {
                 let bruh = core::slice::from_raw_parts_mut(
-                    0x90000000 as *mut u8,
+                    FRAME_BUF as *mut u8,
                     (WIDTH * HEIGHT) as usize,
                 );
                 const TMP: usize = WIDTH as usize * CHAR.character_size.height as usize;
                 bruh.copy_within(
-                    (self.scroll_start as usize + 1) * TMP
-                        ..((self.scroll_end as usize + 1) * TMP),
+                    (self.scroll_start as usize + 1) * TMP..((self.scroll_end as usize + 1) * TMP),
                     (self.scroll_start as usize) * TMP,
                 );
-                bruh[self.scroll_end as usize * TMP..(self.scroll_end as usize + 1) * TMP].fill(self.bg as u8);
+                bruh[self.scroll_end as usize * TMP..(self.scroll_end as usize + 1) * TMP]
+                    .fill(self.bg.0);
                 self.line -= 1;
             }
         } else {
@@ -345,20 +426,20 @@ impl VGAAnsiController{
         }
     }
 
-    unsafe fn handle_ansi(&mut self, ansi: ansi::Ansi){
-        if ansi != ansi::Ansi::C0(ansi::C0::SP){
+    unsafe fn handle_ansi(&mut self, ansi: ansi::Ansi) {
+        if ansi != ansi::Ansi::C0(ansi::C0::SP) {
             // crate::println!("{ansi:?}");
         }
-        match ansi{
+        match ansi {
             ansi::Ansi::C0(c0) => self.handle_c0(c0),
             ansi::Ansi::C1(c0) => self.handle_c1(c0),
         }
     }
 
-    unsafe fn handle_c0(&mut self, c0: ansi::C0){
+    unsafe fn handle_c0(&mut self, c0: ansi::C0) {
         use embedded_graphics::prelude::*;
-        use embedded_graphics::primitives::Rectangle;
         use embedded_graphics::primitives::PrimitiveStyleBuilder;
+        use embedded_graphics::primitives::Rectangle;
 
         let display = unsafe { &mut *FRAME_BUF };
 
@@ -368,24 +449,18 @@ impl VGAAnsiController{
             .stroke_width(0)
             .build();
 
-        match c0{
+        match c0 {
             ansi::C0::BS => {
-                self.col -= 1;
-                if self.col < 0 {
+                if self.line == 0 {
+                    if self.col > 0 {
+                        self.col -= 1;
+                    }
+                } else if self.col == 0 {
                     self.col = COLS - 1;
-                    self.line = (self.line - 1).max(0);
+                    self.line -= 1;
+                } else {
+                    self.col -= 1;
                 }
-
-                Rectangle::new(
-                    Point::new(
-                        self.col * CHAR.character_size.width as i32,
-                        CHAR.character_size.height as i32 * self.line,
-                    ),
-                    Size::new(CHAR.character_size.width, CHAR.character_size.height),
-                )
-                .into_styled(style)
-                .draw(display)
-                .unwrap();
             }
             ansi::C0::BEL => {}
             ansi::C0::CR => {
@@ -408,7 +483,7 @@ impl VGAAnsiController{
                     self.line += 1;
                     if self.line >= self.scroll_end {
                         let bruh = core::slice::from_raw_parts_mut(
-                            0x90000000 as *mut u8,
+                            FRAME_BUF as *mut u8,
                             (WIDTH * HEIGHT) as usize,
                         );
                         const TMP: usize = WIDTH as usize * CHAR.character_size.height as usize;
@@ -417,7 +492,8 @@ impl VGAAnsiController{
                                 ..((self.scroll_end as usize + 1) * TMP),
                             (self.scroll_start as usize) * TMP,
                         );
-                        bruh[self.scroll_end as usize * TMP..(self.scroll_end as usize + 1) * TMP].fill(self.bg as u8);
+                        bruh[self.scroll_end as usize * TMP..(self.scroll_end as usize + 1) * TMP]
+                            .fill(self.bg.0);
                         self.line -= 1;
                     }
                 } else {
@@ -430,7 +506,7 @@ impl VGAAnsiController{
                 self.line += 1;
                 if self.line >= self.scroll_end {
                     let bruh = core::slice::from_raw_parts_mut(
-                        0x90000000 as *mut u8,
+                        FRAME_BUF as *mut u8,
                         (WIDTH * HEIGHT) as usize,
                     );
                     const TMP: usize = WIDTH as usize * CHAR.character_size.height as usize;
@@ -439,7 +515,8 @@ impl VGAAnsiController{
                             ..((self.scroll_end as usize + 1) * TMP),
                         (self.scroll_start as usize) * TMP,
                     );
-                    bruh[self.scroll_end as usize * TMP..(self.scroll_end as usize + 1) * TMP].fill(self.bg as u8);
+                    bruh[self.scroll_end as usize * TMP..(self.scroll_end as usize + 1) * TMP]
+                        .fill(self.bg.0);
                     self.line -= 1;
                 }
             }
@@ -448,8 +525,8 @@ impl VGAAnsiController{
         }
     }
 
-    unsafe fn handle_c1(&mut self, c1: ansi::C1){
-        match c1{
+    unsafe fn handle_c1(&mut self, c1: ansi::C1) {
+        match c1 {
             ansi::C1::nF(nf) => self.handle_nf(nf),
             ansi::C1::Fp(fp) => self.handle_fp(fp),
             ansi::C1::Fe(fe) => self.handle_fe(fe),
@@ -458,38 +535,36 @@ impl VGAAnsiController{
         }
     }
 
-    unsafe fn handle_nf(&mut self, nf: ansi::nF){
-        match nf{
-            other => un_print!("{other:?}")
+    unsafe fn handle_nf(&mut self, nf: ansi::nF) {
+        match nf {
+            other => un_print!("{other:?}"),
         }
     }
 
-    unsafe fn handle_fp(&mut self, fp: ansi::Fp){
-        match fp{
-            other => un_print!("{other:?}")
+    unsafe fn handle_fp(&mut self, fp: ansi::Fp) {
+        match fp {
+            other => un_print!("{other:?}"),
         }
     }
 
-    unsafe fn handle_fe(&mut self, fe: ansi::Fe){
-        match fe{
+    unsafe fn handle_fe(&mut self, fe: ansi::Fe) {
+        match fe {
             ansi::Fe::CSI(csi) => self.handle_csi(csi),
             other => un_print!("{other:?}"),
         }
     }
 
-    unsafe fn handle_fs(&mut self, fs: ansi::Fs){
-        match fs{
-            other => un_print!("{other:?}")
+    unsafe fn handle_fs(&mut self, fs: ansi::Fs) {
+        match fs {
+            other => un_print!("{other:?}"),
         }
     }
 
-    unsafe fn handle_csi(&mut self, csi: ansi::CSI){
+    unsafe fn handle_csi(&mut self, csi: ansi::CSI) {
         let display = unsafe { &mut *FRAME_BUF };
 
         use embedded_graphics::{
-            prelude::*,
-            primitives::Rectangle,
-            primitives::PrimitiveStyleBuilder,
+            prelude::*, primitives::PrimitiveStyleBuilder, primitives::Rectangle,
         };
 
         let style = PrimitiveStyleBuilder::new()
@@ -497,23 +572,40 @@ impl VGAAnsiController{
             .fill_color(self.bg)
             .stroke_width(0)
             .build();
-    
+
         match csi {
-            ansi::CSI::CursorTo { line, col } => {
-                self.col = col as i32 - 1;
-                self.line = line as i32 - 1;
+            ansi::CSI::ReportCursorPosition => {
+                /// CSI r ; c R
+                struct Bleh;
+                impl core::fmt::Write for Bleh {
+                    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+                        uart::print(s);
+                        Ok(())
+                    }
+                }
+                use core::fmt::Write;
+                write!(Bleh, "\x1b[{};{}R", self.line + 1, self.col + 1).unwrap();
+                crate::println!("{};{}R", self.line + 1, self.col + 1)
+            }
+            ansi::CSI::CursorTo { line, col }
+            | ansi::CSI::HorizontalVerticalPosition { line, col } => {
+                self.col = (col as i32).min(COLS) - 1;
+                self.line = (line as i32).min(LINES) - 1;
             }
             ansi::CSI::InsertLines(lines) => {
                 let bruh = core::slice::from_raw_parts_mut(
-                    0x90000000 as *mut u8,
+                    FRAME_BUF as *mut u8,
                     (WIDTH * HEIGHT) as usize,
                 );
                 bruh.copy_within(
-                    (self.scroll_start as usize) * TMP..
-                    (self.scroll_end as usize + 1 - lines as usize) * TMP, 
-                    (lines as usize + self.scroll_start as usize) * TMP);
+                    (self.scroll_start as usize) * TMP
+                        ..(self.scroll_end as usize + 1 - lines as usize) * TMP,
+                    (lines as usize + self.scroll_start as usize) * TMP,
+                );
                 const TMP: usize = WIDTH as usize * CHAR.character_size.height as usize;
-                bruh[self.scroll_start as usize * TMP..(lines as usize + self.scroll_start as usize) * TMP].fill(self.bg as u8);
+                bruh[self.scroll_start as usize * TMP
+                    ..(lines as usize + self.scroll_start as usize) * TMP]
+                    .fill(self.bg.0);
             }
             ansi::CSI::CursorUp(amount) => self.line -= amount as i32,
             ansi::CSI::CursorDown(amount) => self.line += amount as i32,
@@ -581,55 +673,81 @@ impl VGAAnsiController{
                     self.handle_select_graphic(g);
                 }
             }
-            other => un_print!("{other:?}")
+            other => un_print!("{other:?}"),
         }
     }
 
-    unsafe fn handle_select_graphic(&mut self, sg: ansi::SelectGraphic){
+    unsafe fn handle_select_graphic(&mut self, sg: ansi::SelectGraphic) {
         match sg {
             ansi::SelectGraphic::Reset => {
-                self.bg = Color::Black;
-                self.fg = Color::White;
+                self.bg = Color::BLACK;
+                self.fg = Color::WHITE;
             }
             ansi::SelectGraphic::Fg(c) => {
                 self.fg = match c {
-                    ansi::Color::Default => Color::White,
-                    ansi::Color::Black => Color::Black,
-                    ansi::Color::Red => Color::Red,
-                    ansi::Color::Green => Color::Green,
-                    ansi::Color::Yellow => Color::Yellow,
-                    ansi::Color::Blue => Color::Blue,
-                    ansi::Color::Magenta => Color::Magenta,
-                    ansi::Color::Cyan => Color::Cyan,
-                    ansi::Color::White => Color::White,
-                    _ => Color::White,
+                    ansi::Color::Default => Color::WHITE,
+
+                    ansi::Color::Black => Color::BLACK,
+                    ansi::Color::Red => Color::new(170, 0, 0),
+                    ansi::Color::Green => Color::new(0, 170, 0),
+                    ansi::Color::Yellow => Color::new(170, 80, 0),
+                    ansi::Color::Blue => Color::new(0, 0, 170),
+                    ansi::Color::Magenta => Color::new(170, 0, 170),
+                    ansi::Color::Cyan => Color::new(0, 170, 170),
+                    ansi::Color::White => Color::new(192, 192, 192),
+
+                    ansi::Color::BrightBlack => Color::new(170, 170, 170),
+                    ansi::Color::BrightRed => Color::new(255, 0, 0),
+                    ansi::Color::BrightGreen => Color::new(0, 255, 0),
+                    ansi::Color::BrightYellow => Color::new(255, 255, 0),
+                    ansi::Color::BrightBlue => Color::new(0, 0, 255),
+                    ansi::Color::BrightMagenta => Color::new(255, 0, 170),
+                    ansi::Color::BrightCyan => Color::new(0, 255, 255),
+                    ansi::Color::BrightWhite => Color::WHITE,
+
+                    ansi::Color::VGA(v) => Color(v),
+                    ansi::Color::RGB([r, g, b]) => Color::new(r, g, b),
+                    _ => Color::WHITE,
                 }
             }
             ansi::SelectGraphic::Bg(c) => {
                 self.bg = match c {
-                    ansi::Color::Default => Color::White,
-                    ansi::Color::Black => Color::Black,
-                    ansi::Color::Red => Color::Red,
-                    ansi::Color::Green => Color::Green,
-                    ansi::Color::Yellow => Color::Yellow,
-                    ansi::Color::Blue => Color::Blue,
-                    ansi::Color::Magenta => Color::Magenta,
-                    ansi::Color::Cyan => Color::Cyan,
-                    ansi::Color::White => Color::White,
-                    _ => Color::White,
+                    ansi::Color::Default => Color::BLACK,
+
+                    ansi::Color::Black => Color::BLACK,
+                    ansi::Color::Red => Color::new(170, 0, 0),
+                    ansi::Color::Green => Color::new(0, 170, 0),
+                    ansi::Color::Yellow => Color::new(170, 80, 0),
+                    ansi::Color::Blue => Color::new(0, 0, 170),
+                    ansi::Color::Magenta => Color::new(170, 0, 170),
+                    ansi::Color::Cyan => Color::new(0, 170, 170),
+                    ansi::Color::White => Color::new(192, 192, 192),
+
+                    ansi::Color::BrightBlack => Color::new(170, 170, 170),
+                    ansi::Color::BrightRed => Color::new(255, 0, 0),
+                    ansi::Color::BrightGreen => Color::new(0, 255, 0),
+                    ansi::Color::BrightYellow => Color::new(255, 255, 0),
+                    ansi::Color::BrightBlue => Color::new(0, 0, 255),
+                    ansi::Color::BrightMagenta => Color::new(255, 0, 170),
+                    ansi::Color::BrightCyan => Color::new(0, 255, 255),
+                    ansi::Color::BrightWhite => Color::WHITE,
+
+                    ansi::Color::VGA(v) => Color(v),
+                    ansi::Color::RGB([r, g, b]) => Color::new(r, g, b),
+                    _ => Color::BLACK,
                 }
             }
-            other => un_print!("{other:?}")
+            other => un_print!("{other:?}"),
         }
     }
 }
 
 //------------------- ANSI VGA Controller --------------------------
 
-pub unsafe fn print(data: &[u8]) {
-    static mut PARSER: ansi::AnsiParser = ansi::AnsiParser::new();
-    static mut CONTROLLER: VGAAnsiController = VGAAnsiController::new();
+pub static mut PARSER: ansi::AnsiParser = ansi::AnsiParser::new();
+pub static mut CONTROLLER: VGAAnsiController = VGAAnsiController::new();
 
+pub unsafe fn print(data: &[u8]) {
     for byte in data {
         CONTROLLER.advance(PARSER.next(*byte as char));
     }

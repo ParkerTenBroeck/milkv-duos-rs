@@ -177,6 +177,20 @@ pub unsafe fn enable_timer_interrupt() {
     )
 }
 
+pub unsafe fn disable_timer_interrupt() {
+    core::arch::asm!(
+        "csrc mie, {0}",
+        in(reg) 0b10000000
+    )
+}
+
+pub unsafe fn disable_external_interrupt() {
+    core::arch::asm!(
+        "csrc mie, {0}",
+        in(reg) 0b100000000000
+    )
+}
+
 pub unsafe fn enable_external_interrupt() {
     core::arch::asm!(
         "csrs mie, {0}",

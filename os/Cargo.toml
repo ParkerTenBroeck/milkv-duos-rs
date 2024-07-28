@@ -7,10 +7,13 @@ edition = "2021"
 [dependencies]
 milkv-rs = { path = "../milkv-rs" }
 vga = { path = "../vga" }
+ansi = { path = "../ansi" }
+embedded-graphics = "*"
 
 [profile.release]
 panic = "abort"
-opt-level = "z"
+opt-level = 3
+debug = "full"
 lto = "fat"
 codegen-units = 1
 
