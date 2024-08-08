@@ -33,8 +33,13 @@ pub const V_BACK_PORCH: u64 = 525  - LINES_VIS - V_FRONT_PORCH - V_SYNC_PULSE;
 pub const V_TOTAL: u64 = LINES_VIS + V_FRONT_PORCH + V_SYNC_PULSE + V_BACK_PORCH;
 
 // pub const PX_TIM: u64 = 786_432 + 15000; //0_0397219464 * timer::SYS_COUNTER_FREQ_IN_US;
-pub const PX_TIM: u64 = 786_376196; //1049_925865 //0_0397219464 * timer::SYS_COUNTER_FREQ_IN_US;
-pub const PX_TIME_DIV_FACT: u64 = 25_175000; //10000000000;
+// pub const PX_TIM: u64 = 786_376196; //1049_925865 //0_0397219464 * timer::SYS_COUNTER_FREQ_IN_US;
+// pub const PX_TIM: u64 = 1049_925865; //0_0397219464 * timer::SYS_COUNTER_FREQ_IN_US;
+// pub const PX_TIME_DIV_FACT: u64 = 25_175000; //10000000000;
+
+pub const PX_TIM: u64 = 1; //1049_925865 //0_0397219464 * timer::SYS_COUNTER_FREQ_IN_US;
+// pub const PX_TIM: u64 = 1049_925865; //0_0397219464 * timer::SYS_COUNTER_FREQ_IN_US;
+pub const PX_TIME_DIV_FACT: u64 = 1; //10000000000;
 
 
 pub const H_SYNC_PH: u32 = 0 << H_SYNC_PIN;
@@ -44,6 +49,11 @@ pub const V_SYNC_PL: u32 = 1 << V_SYNC_PIN;
 
 pub const WIDTH: u64 = PIX_VIS * PIXEL_SCALE_DIV / PIXEL_SCALE;
 pub const HEIGHT: u64 = LINES_VIS / VERT_SCALE;
+
+#[inline(always)]
+pub fn time() -> u64{
+    timer::get_mtimer()
+}
 
 #[allow(unused)]
 pub unsafe fn run_vga(addr: usize) -> ! {
@@ -69,13 +79,13 @@ pub unsafe fn run_vga(addr: usize) -> ! {
     unsafe { disable_interrupts() }
 
 
-    // let mut goal = csr::mcycle();
+    // let mut goal = time();
     // loop{
     //     goal += 1000000000;
-    //     while goal > csr::mcycle(){}
+    //     while goal > time(){}
     //     gpio_dr.write_volatile(1<<V_SYNC_PIN);
     //     goal += 1000000000;
-    //     while goal > csr::mcycle(){}
+    //     while goal > time(){}
     //     gpio_dr.write_volatile(0);
     // }
 
@@ -85,7 +95,7 @@ pub unsafe fn run_vga(addr: usize) -> ! {
     // }
 
     loop {
-        let start = csr::mcycle();
+        let start = time();
         
         for l in 0..LINES_VIS {
             let mut addr = start_addr + l/VERT_SCALE * WIDTH;
@@ -95,7 +105,7 @@ pub unsafe fn run_vga(addr: usize) -> ! {
             for p in 0..WIDTH {
                 // const V: u64 = PX_TIM*PIXEL_SCALE/PIXEL_SCALE_DIV/PX_TIME_DIV_FACT;
                 let pend = lstart + ((p+1) * PIXEL_SCALE / PIXEL_SCALE_DIV * PX_TIM) / PX_TIME_DIV_FACT;
-                if (pend + PX_TIM*PIXEL_SCALE/PIXEL_SCALE_DIV/PX_TIME_DIV_FACT) < csr::mcycle(){
+                if (pend + PX_TIM*PIXEL_SCALE/PIXEL_SCALE_DIV/PX_TIME_DIV_FACT) < time(){
                     continue;
                 }
 
@@ -103,11 +113,11 @@ pub unsafe fn run_vga(addr: usize) -> ! {
                 let pval = (pval & 0b00111111) << 11 | ((pval & 0b11000000) << 12) | const { H_SYNC_PL | V_SYNC_PL };
                 gpio_dr.write_volatile(pval);
 
-                while pend > csr::mcycle() {}
+                while pend > time() {}
             }
             gpio_dr.write_volatile(const { H_SYNC_PL | V_SYNC_PL });
             let fp = H_FP_M + lstart + { per_px(PIX_VIS + H_FRONT_PORCH) };
-            while fp > csr::mcycle() {}
+            while fp > time() {}
             gpio_dr.write_volatile(const { H_SYNC_PH | V_SYNC_PL });
             
 
@@ -117,17 +127,17 @@ pub unsafe fn run_vga(addr: usize) -> ! {
                 let mut addr = start_addr + (l+1)/VERT_SCALE * WIDTH;
                 for addr in (addr..(addr + WIDTH + 63) & !63).step_by(4*8*2){
                     (addr as *mut u8).read_volatile();
-                    if sp < csr::mcycle(){break}
+                    if sp < time(){break}
                 }
             }
 
-            while sp > csr::mcycle() {}
+            while sp > time() {}
             gpio_dr.write_volatile({ H_SYNC_PL | V_SYNC_PL });
 
             let bp =
             H_BP_M + lstart + { per_px(PIX_VIS + H_FRONT_PORCH + H_SYNC_PULSE + H_BACK_PORCH) }; 
             
-            while bp > csr::mcycle() {}
+            while bp > time() {}
         }
         
         
@@ -137,15 +147,15 @@ pub unsafe fn run_vga(addr: usize) -> ! {
                 let lstart = start + per_line(l);
                 gpio_dr.write_volatile(const { H_SYNC_PL | V_SYNC_PL });
                 let fp = H_FP_M + lstart + { per_px(PIX_VIS + H_FRONT_PORCH) };
-                while fp > csr::mcycle() {}
+                while fp > time() {}
                 gpio_dr.write_volatile(const { H_SYNC_PH | V_SYNC_PL });
                 let sp = H_SP_M + lstart + { per_px(PIX_VIS + H_FRONT_PORCH + H_SYNC_PULSE) };
 
-                while sp > csr::mcycle() {}
+                while sp > time() {}
                 gpio_dr.write_volatile(const { H_SYNC_PL | V_SYNC_PL });
                 let bp = H_BP_M + lstart
                     + { per_px(PIX_VIS + H_FRONT_PORCH + H_SYNC_PULSE + H_BACK_PORCH) };
-                while bp > csr::mcycle() {}
+                while bp > time() {}
             }
         }
 
@@ -155,15 +165,15 @@ pub unsafe fn run_vga(addr: usize) -> ! {
                 let lstart = start + per_line(l);
                 gpio_dr.write_volatile( { H_SYNC_PL | V_SYNC_PH });
                 let fp = H_FP_M + lstart +  { per_px(PIX_VIS + H_FRONT_PORCH) };
-                while fp > csr::mcycle() {}
+                while fp > time() {}
                 gpio_dr.write_volatile(const { H_SYNC_PH | V_SYNC_PH });
                 let sp = H_SP_M + lstart + { per_px(PIX_VIS + H_FRONT_PORCH + H_SYNC_PULSE) };
 
-                while sp > csr::mcycle() {}
+                while sp > time() {}
                 gpio_dr.write_volatile(const { H_SYNC_PL | V_SYNC_PH });
                 let bp = H_BP_M + lstart
                     + { per_px(PIX_VIS + H_FRONT_PORCH + H_SYNC_PULSE + H_BACK_PORCH) };
-                while bp > csr::mcycle() {}
+                while bp > time() {}
             }
         }
 
@@ -183,15 +193,15 @@ pub unsafe fn run_vga(addr: usize) -> ! {
                 let lstart = start + per_line(l);
                 gpio_dr.write_volatile(const { H_SYNC_PL | V_SYNC_PL });
                 let fp = H_FP_M + lstart + { per_px(PIX_VIS + H_FRONT_PORCH) };
-                while fp > csr::mcycle() {}
+                while fp > time() {}
                 gpio_dr.write_volatile(const { H_SYNC_PH | V_SYNC_PL });
                 let sp = H_SP_M + lstart + { per_px(PIX_VIS + H_FRONT_PORCH + H_SYNC_PULSE) };
 
-                while sp > csr::mcycle() {}
+                while sp > time() {}
                 gpio_dr.write_volatile({ H_SYNC_PL | V_SYNC_PL });
                 let bp = H_BP_M + lstart
                     + { per_px(PIX_VIS + H_FRONT_PORCH + H_SYNC_PULSE + H_BACK_PORCH) };
-                while bp > csr::mcycle() {}
+                while bp > time() {}
             }
         }
     }
@@ -202,6 +212,17 @@ pub fn flush_frame(addr: usize){
         unsafe{
             core::arch::asm!("
                 th.dcache.cpa {0}
+            ",
+            in(reg) addr + cl);
+        }
+    }
+}
+
+pub fn flush_frame_virt(addr: usize){
+    for cl in (0..(WIDTH * HEIGHT) as usize).step_by(64){
+        unsafe{
+            core::arch::asm!("
+                th.dcache.cva {0}
             ",
             in(reg) addr + cl);
         }

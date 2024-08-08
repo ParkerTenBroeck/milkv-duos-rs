@@ -639,7 +639,8 @@ impl RayTrace {
                     }
                 }
             }
-            vga::flush_frame(crate::vga::FRAME_BUF as usize);
+            vga::flush_frame_virt(unsafe { crate::vga::FRAME_BUF } as usize);
+
             self.g_time = (timer::get_mtimer() / (timer::SYS_COUNTER_FREQ_IN_SECOND / 250)) as i32;
         }
     }

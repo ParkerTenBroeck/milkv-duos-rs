@@ -20,6 +20,9 @@ pub mod rom_api;
 pub mod platform;
 pub mod rtc;
 pub mod mmap;
+pub mod mem;
+
+pub use riscv;
 
 #[no_mangle]
 pub unsafe extern "C" fn reset() -> ! {

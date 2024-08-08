@@ -1,4 +1,6 @@
-pub static mut SOUT: fn(&[u8]) = |b| crate::write(b);
+use crate::interrupt_vector::reset;
+
+pub static mut SOUT: fn(&[u8]) = |b| milkv_rs::uart::print_bytes(b);
 
 pub fn print(msg: &str) {
     unsafe { SOUT(msg.as_bytes()) }
@@ -17,9 +19,7 @@ pub fn read_b() -> u8 {
             COUNT += 1;
             // crate::println!("{b}");
             if b == b'\r' {
-                let func: fn(usize) = core::mem::transmute(0x000000000c000000usize + 40);
-                milkv_rs::csr::disable_interrupts();
-                func(1);
+                reset()
             }
         } else {
             COUNT = 0;
@@ -28,5 +28,6 @@ pub fn read_b() -> u8 {
     b
 }
 pub fn has_b() -> bool {
-    unsafe { !crate::uart_sys::RX.is_empty() }
+    milkv_rs::uart::has_b()
+    // unsafe { !crate::uart_sys::RX.is_empty() }
 }

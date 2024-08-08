@@ -25,7 +25,7 @@ pub fn get_mtimer() -> u64 {
     let val: u64;
     unsafe {
         core::arch::asm!(
-          "csrr {val},0xc01",
+          "csrr  {val}, 0xc01",
           val = out(reg) val,
         );
     }
@@ -34,25 +34,47 @@ pub fn get_mtimer() -> u64 {
 
 pub const CLINT_BASE: u32 = 0x74000000;
 /* CLINT */
-pub const CLINT_TIMECMPL0: u32 = CLINT_BASE + 0x4000;
-pub const CLINT_TIMECMPH0: u32 = CLINT_BASE + 0x4004;
+pub const CLINT_MTIMECMPL0: u32 = CLINT_BASE + 0x4000;
+pub const CLINT_MTIMECMPH0: u32 = CLINT_BASE + 0x4004;
 
-pub fn get_timercmp() -> u64 {
+
+pub const CLINT_STIMECMPL0: u32 = CLINT_BASE + 0xD000;
+pub const CLINT_STIMECMPH0: u32 = CLINT_BASE + 0xD004;
+
+pub fn get_mtimercmp() -> u64 {
     unsafe {
-        let low = (CLINT_TIMECMPL0 as *mut u32).read_volatile() as u64;
-        let high = (CLINT_TIMECMPH0 as *mut u32).read_volatile() as u64;
+        let low = (CLINT_MTIMECMPL0 as *mut u32).read_volatile() as u64;
+        let high = (CLINT_MTIMECMPH0 as *mut u32).read_volatile() as u64;
         low | (high << 32)
     }
 }
 
-pub unsafe fn set_timercmp(val: u64) {
-    (CLINT_TIMECMPH0 as *mut u32).write_volatile(u32::MAX);
-    (CLINT_TIMECMPL0 as *mut u32).write_volatile(val as u32);
-    (CLINT_TIMECMPH0 as *mut u32).write_volatile((val >> 32) as u32);
+pub unsafe fn set_mtimercmp(val: u64) {
+    (CLINT_MTIMECMPH0 as *mut u32).write_volatile(u32::MAX);
+    (CLINT_MTIMECMPL0 as *mut u32).write_volatile(val as u32);
+    (CLINT_MTIMECMPH0 as *mut u32).write_volatile((val >> 32) as u32);
 }
 
-pub unsafe fn add_timercmp(val: u64) {
-    set_timercmp(get_timercmp().wrapping_add(val));
+pub unsafe fn add_mtimercmp(val: u64) {
+    set_mtimercmp(get_mtimercmp().wrapping_add(val));
+}
+
+pub fn get_stimercmp() -> u64 {
+    unsafe {
+        let low = (CLINT_STIMECMPL0 as *mut u32).read_volatile() as u64;
+        let high = (CLINT_STIMECMPH0 as *mut u32).read_volatile() as u64;
+        low | (high << 32)
+    }
+}
+
+pub unsafe fn set_stimercmp(val: u64) {
+    (CLINT_STIMECMPH0 as *mut u32).write_volatile(u32::MAX);
+    (CLINT_STIMECMPL0 as *mut u32).write_volatile(val as u32);
+    (CLINT_STIMECMPH0 as *mut u32).write_volatile((val >> 32) as u32);
+}
+
+pub unsafe fn add_stimercmp(val: u64) {
+    set_stimercmp(get_stimercmp().wrapping_add(val));
 }
 
 pub mod mm {

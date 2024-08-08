@@ -104,7 +104,10 @@ pub enum C1<'a> {
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 /// A sequence starting with 0x1b with a character in the range 0x20-0x2F following
-pub enum nF {}
+pub enum nF {
+    DesignateG0CharacterSet,
+    Invalid(char),
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
@@ -469,7 +472,7 @@ impl<'a> GraphicsRendition<'a> {
                 4 => return Color::Blue,
                 5 => return Color::Magenta,
                 6 => return Color::Cyan,
-                7 => return Color::Black,
+                7 => return Color::White,
                 _ => {}
             }
         }
@@ -482,7 +485,7 @@ impl<'a> GraphicsRendition<'a> {
                 4 => return Color::BrightBlue,
                 5 => return Color::BrightMagenta,
                 6 => return Color::BrightCyan,
-                7 => return Color::BrightBlack,
+                7 => return Color::BrightWhite,
                 _ => {}
             }
         }
@@ -526,7 +529,7 @@ impl<'a> Iterator for GraphicsRendition<'a> {
                 Some(90),
                 Some(38),
             ))),
-            c @ (40..=49 | 100..=107) => Some(SelectGraphic::Fg(self.parse_color(
+            c @ (40..=49 | 100..=107) => Some(SelectGraphic::Bg(self.parse_color(
                 c,
                 Some(49),
                 Some(40),
@@ -539,7 +542,7 @@ impl<'a> Iterator for GraphicsRendition<'a> {
             53 => Some(SelectGraphic::Overlined),
             54 => Some(SelectGraphic::NeitherFramedNorEncircled),
             55 => Some(SelectGraphic::NotOverlined),
-            c @ 58..=59 => Some(SelectGraphic::Fg(self.parse_color(
+            c @ 58..=59 => Some(SelectGraphic::UnderlineColor(self.parse_color(
                 c,
                 Some(59),
                 None,
@@ -588,7 +591,9 @@ enum State {
     Csi,
 
     String(StringKind),
-    StringEcp(StringKind)
+    StringEcp(StringKind),
+
+    NfFirst(u8),
 }
 
 enum InvalidKind{
@@ -675,26 +680,26 @@ impl<const N: usize> AnsiParser<N> {
             State::Escape => match input as u32 {
                 0x20..=0x2F => {
                     // nF
-                    self.state = State::Default;
-                    match input {
-                        ' ' => {}
-                        '!' => {}
-                        '"' => {}
-                        '#' => {}
-                        '$' => {}
-                        '%' => {}
-                        '&' => {}
-                        '\'' => {}
-                        '(' => {}
-                        ')' => {}
-                        '*' => {}
-                        '+' => {}
-                        ',' => {}
-                        '-' => {}
-                        '.' => {}
-                        '/' => {}
-                        _ => unreachable!()
-                    }
+                    self.state = State::NfFirst(input as u8);
+                    // match input {
+                    //     ' ' => 
+                    //     '!' => {}
+                    //     '"' => {}
+                    //     '#' => {}
+                    //     '$' => {}
+                    //     '%' => {}
+                    //     '&' => {}
+                    //     '\'' => {}
+                    //     '(' => {}
+                    //     ')' => {}
+                    //     '*' => {}
+                    //     '+' => {}
+                    //     ',' => {}
+                    //     '-' => {}
+                    //     '.' => {}
+                    //     '/' => {}
+                    //     _ => unreachable!()
+                    // }
                     Out::None
                 }
                 0x30..=0x3F => {
@@ -820,6 +825,14 @@ impl<const N: usize> AnsiParser<N> {
                     Out::Ansi(Ansi::C1(C1::Invalid(input)))
                 }
             },
+            State::NfFirst(b) => {
+                
+                self.state = State::Default;
+                    match (b, input){
+                    (b'(', 'B') => Out::Ansi(Ansi::C1(C1::nF(nF::DesignateG0CharacterSet))),
+                    _ => Out::Ansi(Ansi::C1(C1::nF(nF::Invalid(input))))
+                }
+            }
             State::CsiStart => match input {
                 '=' => {
                     self.state = State::Csi;

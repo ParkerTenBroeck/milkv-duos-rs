@@ -153,10 +153,10 @@ pub extern "C" fn bl_rust_main(init: usize) {
 
     unsafe{
         // init_interrupts();
-        csr::disable_interrupts();
-        csr::disable_external_interrupt();
-        csr::disable_timer_interrupt();
-        io::print("Disabled Interrupts\n");
+        // csr::disable_interrupts();
+        // csr::disable_external_interrupt();
+        // csr::disable_timer_interrupt();
+        // io::print("Disabled Interrupts\n");
     }
 
     unsafe {
@@ -222,33 +222,33 @@ pub extern "C" fn bl_rust_main(init: usize) {
 unsafe fn init_interrupts() {
     plic::clear();
 
-    //--------------- timer 0 initialization ----------------------
-    interrupt_vector::add_plic_handler(interrupt::TIMER0, || {
-        gpio::set_gpio(mmio::GPIO0, 29, !gpio::read_gpio(mmio::GPIO0, 29));
-        timer::mm::clear_int(mmio::TIMER0);
-    });
+    // //--------------- timer 0 initialization ----------------------
+    // interrupt_vector::add_plic_handler(interrupt::TIMER0, || {
+    //     gpio::set_gpio(mmio::GPIO0, 29, !gpio::read_gpio(mmio::GPIO0, 29));
+    //     timer::mm::clear_int(mmio::TIMER0);
+    // });
 
-    // timer 0 interrupt number
-    plic::set_priority(interrupt::TIMER0, 1);
-    plic::enable_m_interrupt(interrupt::TIMER0);
+    // // timer 0 interrupt number
+    // plic::set_priority(interrupt::TIMER0, 1);
+    // plic::enable_m_interrupt(interrupt::TIMER0);
 
-    // initialize timer0
-    timer::mm::set_mode(mmio::TIMER0, timer::mm::TimerMode::Count);
-    // quarter second
-    timer::mm::set_load_value(mmio::TIMER0, timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 4);
-    timer::mm::set_enabled(mmio::TIMER0, true);
-    //-------------------------------------
+    // // initialize timer0
+    // timer::mm::set_mode(mmio::TIMER0, timer::mm::TimerMode::Count);
+    // // quarter second
+    // timer::mm::set_load_value(mmio::TIMER0, timer::SYS_COUNTER_FREQ_IN_SECOND as u32 / 4);
+    // timer::mm::set_enabled(mmio::TIMER0, true);
+    // //-------------------------------------
 
 
-    // all enabled interrupts allowed
-    plic::mint_threshhold(0);
-    // plic is seen as a single external interrupt source
-    csr::enable_external_interrupt();
+    // // all enabled interrupts allowed
+    // plic::mint_threshhold(0);
+    // // plic is seen as a single external interrupt source
+    // csr::enable_external_interrupt();
 
     csr::enable_timer_interrupt();
     csr::enable_interrupts();
 
 
     // trigger an interrupt NOW
-    timer::set_timercmp(timer::get_mtimer());
+    timer::set_mtimercmp(timer::get_mtimer());
 }

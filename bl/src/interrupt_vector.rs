@@ -1,8 +1,8 @@
 use core::{ptr::NonNull, sync::atomic::AtomicPtr};
 
-use milkv_rs::{csr, plic, timer};
+use milkv_rs::{csr, mem, plic, riscv::register::satp::Mode, timer};
 
-use crate::println;
+use crate::{print, println};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -21,6 +21,7 @@ core::arch::global_asm!(
 
     .balign 4
     mtrap_vector:
+        csrrw sp, mscratch, sp
         addi sp, sp, -8 * (31 + 1 + 1)
         sd x1, 1 * 8( sp )
         # sd x2, 2 * 8( sp )
@@ -119,6 +120,7 @@ core::arch::global_asm!(
         ld x30, 30 * 8( sp )
         ld x31, 31 * 8( sp )
         addi sp, sp, 8 * (31 + 1 + 1)
+        csrrw sp, mscratch, sp
 
         mret
     "#
@@ -132,7 +134,6 @@ pub extern "C" fn mtrap_handler(frame: &mut TrapFrame, mcause: usize, mepc: usiz
     let sync = mcause & (1 << 63) == 0;
     let code = mcause & !(1 << 63);
     if sync {
-        let mepc = mepc - 1;
         let desc = match code {
             0 => "Instruction address misaligned",
             1 => "Instruction access fault",
@@ -150,25 +151,59 @@ pub extern "C" fn mtrap_handler(frame: &mut TrapFrame, mcause: usize, mepc: usiz
                     "\nEnv call from M-mode hardid: \"{}\"... returning",
                     csr::mhartid()
                 );
-                println!("{:#?}", frame);
+                // println!("{:#?}", frame);
                 // timer::mdelay(6000);
                 return;
             }
-            12 => "Instruction page fault",
-            13 => "Page fault on load",
-            15 => "Page fault on store",
+            12 | 13 | 15 =>{
+                let desc = match code{
+                    12 => "Instruction page fault",
+                    13 => "Page fault on load",
+                    15 => "Page fault on store",
+                    _ => "",
+                };
+
+                let stap = milkv_rs::riscv::register::satp::read();
+                println!("{:?}, {:?}, 0x{:x?}", stap.mode(), stap.asid(), stap.ppn());
+
+                unsafe fn print_thing(table: &milkv_rs::mem::PageTable, level: usize){
+                    for entry in &table.entries{
+                        if entry.valid(){
+                            for _ in 0..level{
+                                print!(" ");
+                            }
+                            println!("{:?}:{:x?}", entry as *const mem::PageTableEntry, entry);
+                            if entry.perms() == 0{
+                                print_thing(&*(((entry.ppn() << 12) as *const mem::PageTable)), level+1)
+                            }
+                        }
+                    }
+                }
+                if stap.mode() != Mode::Bare{
+                    unsafe{
+                        print_thing(&*(((stap.ppn() << 12) as *const mem::PageTable)), 0);
+                    }
+                }
+
+                println!("\n\n\n{desc}:\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}, mtval: 0x{mtval:016x}, \nCannot continue resetting\n\n");
+                unsafe { milkv_rs::reset() }
+            } 
             _ => "Unknown exception",
         };
-        let ins = unsafe { (mepc as *const u32).read() };
-        println!("\n\n\n{desc}:\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}, mtval: 0x{mtval:016x}, ins: 0x{ins:08x}\nCannot continue resetting\n\n");
+        println!("\n\n\n{desc}:\nmcause: 0x{mcause:016x}, mepc: 0x{mepc:016x}, mtval: 0x{mtval:016x}, \nCannot continue resetting\n\n");
         unsafe { milkv_rs::reset() }
     } else {
         match code {
             0x7 => {
+                use milkv_rs::*;
+                unsafe{
+                    gpio::set_gpio(mmio::GPIO0, 29, !gpio::read_gpio(mmio::GPIO0, 29));
+                }
+                println!("pc: 0x{mepc:x}");
                 //mtimer > mtimercmp
                 unsafe {
                     // 250 ms
-                    timer::add_timercmp(timer::SYS_COUNTER_FREQ_IN_US * 250 * 1000);
+                    timer::add_mtimercmp(timer::SYS_COUNTER_FREQ_IN_US * 250 * 1000);
                 }
                 //TODO... make this do something else LOL probably task switching or something funny
             }

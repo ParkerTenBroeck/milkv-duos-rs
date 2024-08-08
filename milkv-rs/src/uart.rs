@@ -133,7 +133,7 @@ pub unsafe fn uart_has_rx_space() -> bool{
     (lsr.read_volatile() & UART_LSR_THRE) != 0
 }
 
-#[inline(never)]
+#[inline(always)]
 pub fn print_c(char: u8) {
     if char == b'\n' {
         print_b(b'\r');
@@ -141,14 +141,14 @@ pub fn print_c(char: u8) {
     print_b(char);
 }
 
-#[inline(always)]
+#[inline(never)]
 pub fn print(msg: &str) {
     for b in msg.bytes() {
         print_c(b);
     }
 }
 
-#[inline(always)]
+#[inline(never)]
 pub fn print_bytes(msg: &[u8]) {
     for b in msg {
         print_c(*b);

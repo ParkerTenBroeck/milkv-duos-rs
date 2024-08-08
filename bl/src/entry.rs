@@ -51,7 +51,6 @@ core::arch::global_asm!(
     li x30, 0
     li x31, 0
   
-    csrw mscratch, x0
   
     # write mtvec and make sure it sticks
     la t0, mtrap_vector
@@ -59,6 +58,8 @@ core::arch::global_asm!(
     // csrw stvec, t0
 
     la sp, __STACKS_END__
+    csrw mscratch, sp
+  
   
     la a3, __BSS_START__
     la a4, __BSS_END__

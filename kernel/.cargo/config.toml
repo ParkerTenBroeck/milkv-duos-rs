@@ -9,6 +9,7 @@ target = "../milkv-duos.json"
 rustflags = [
     "-Clink-args=-Tbl.ld",
     "-C", "linker-flavor=gcc",
+    "--cfg", "riscv"
 ]
 
 [target.milkv-duos]

@@ -2,15 +2,18 @@ use milkv_rs::csr::*;
 
 use crate::io;
 
+use milkv_rs::csr::*;
+
 core::arch::global_asm!(
     r#"
-    .globl  _os_start
+    .globl  _stage0_start
 
     .option norvc
     .section .text.entry,"ax",@progbits
-    .globl _os_start
-    _os_start:
+    .globl _stage0_start
+    _stage0_start:
 
+        li x10, 0
     li x1, 0
     li x2, 0
     li x3, 0
@@ -20,7 +23,6 @@ core::arch::global_asm!(
     li x7, 0
     li x8, 0
     li x9, 0
-    li x10, 0
     li x11, 0
     li x12, 0
     li x13, 0
@@ -42,13 +44,8 @@ core::arch::global_asm!(
     li x29, 0
     li x30, 0
     li x31, 0
-  
-    csrw mscratch, x0
-  
-    # write mtvec and make sure it sticks
-    la t0, mtrap_vector
-    csrw mtvec, t0
-    // csrw stvec, t0
+
+    csrw sscratch, x0
   
     # set {mxstatus} to init value
     li x3, 0xc0638000
@@ -84,22 +81,23 @@ core::arch::global_asm!(
   
     la a3, __BSS_START__
     la a4, __BSS_END__
-    sub a4, a4, a3
   
-  bss_clear:
+    beq a3, a4, .bss_clear_end  
     sd x0, 0(a3)
+    addi a4, a4, 7
+  .bss_clear:
     addi a3, a3, 8
-    addi a4, a4, -8
-    bnez a4, bss_clear
+    sd x0, 0(a3)
+    ble a3, a4, .bss_clear
+  .bss_clear_end:
   
-    call os_main
-
-    j die
+    call _stage0_main
+    j .die
   
     .balign 4
-  die:
+  .die:
     ebreak
-    j die
+    j .die
     "#,
 
     mxstatus = const mxstatus,
@@ -107,7 +105,6 @@ core::arch::global_asm!(
     mhcr = const mhcr,
     // mhint = const mhint,
 );
-
 core::arch::global_asm!(
     r#"
     .globl  _second_core_start
@@ -118,7 +115,7 @@ core::arch::global_asm!(
 
     _second_core_start:
 
-    la sp, SECOND_CORE_STACK + {stack_size} - 8
+    la sp, SECOND_CORE_STACK + {stack_size}
 
     csrw mscratch, x0
   
@@ -164,11 +161,11 @@ core::arch::global_asm!(
 );
 
 #[no_mangle]
-extern "C" fn second_core_main() -> ! {
+unsafe extern "C" fn second_core_main() -> ! {
     unsafe { vga::run_vga(crate::vga::FRAME_BUF as usize) }
 }
 
-const STACK_SIZE: usize = 64;
+const STACK_SIZE: usize = 256;
 type Stack = [u64; STACK_SIZE];
 #[no_mangle]
 static mut SECOND_CORE_STACK: Stack = [0; STACK_SIZE];

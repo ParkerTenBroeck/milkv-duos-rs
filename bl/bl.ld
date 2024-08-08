@@ -39,7 +39,7 @@ SECTIONS
     stacks (NOLOAD) : {
         . = ALIGN(64);
         __STACKS_START__ = .;
-        . += 0x4000;
+        . += 0x1000 * 2;
         . = ALIGN(64);
         __STACKS_END__ = .;
     } >RAM

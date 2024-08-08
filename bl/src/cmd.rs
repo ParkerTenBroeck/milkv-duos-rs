@@ -671,7 +671,7 @@ const COMAMNDS: &[&'static dyn Command] = &[
     // }),
     cmd!("mtimer", "reads mtime/mtimecmp", (self, _args) -> {
       println!("mtimer:    0x{:016x}", timer::get_mtimer());
-      println!("mtimercmp: 0x{:016x}", timer::get_timercmp());
+      println!("mtimercmp: 0x{:016x}", timer::get_mtimercmp());
     }),
     cmd!("timer", "(t: usize, op: [Read, Ei, E, C, Ci, Set], val: u32 = 0)", (self, args) -> {
       args!(args, (t: usize, op: TimerOp, val: u32 = 0));
@@ -843,6 +843,8 @@ const COMAMNDS: &[&'static dyn Command] = &[
                 (i as *mut u8).write(uart::get_b());
             }
             println!("{addr:08x}:{len}");
+            // print_mem_u32(addr, len);
+            // milkv_rs::csr::enable_interrupts();
             core::arch::asm!(
                 "
                 th.dcache.call
@@ -850,7 +852,7 @@ const COMAMNDS: &[&'static dyn Command] = &[
                 th.icache.iall
                 jr {0}",
                 in(reg) addr
-            )
+            );
         }
     }),
     // cmd!("vgahsp", "(sync: u64)", (self, args) -> {
